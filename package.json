@@ -1,0 +1,22 @@
+{
+  "name": "obsidian-set-list-plugin",
+  "version": "1.0.0",
+  "description": "Build and perform ordered set lists of song notes in Obsidian.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "check": "tsc -noEmit -skipLibCheck",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "builtin-modules": "^5.3.0",
+    "esbuild": "^0.28.2",
+    "obsidian": "^1.13.1",
+    "tslib": "^2.8.1",
+    "typescript": "^5.5.3",
+    "vitest": "^4.1.10"
+  },
+  "private": true
+}

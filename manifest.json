@@ -1,0 +1,9 @@
+{
+	"id": "obsidian-set-list-plugin",
+	"name": "Set List",
+	"version": "1.0.0",
+	"minAppVersion": "1.4.0",
+	"description": "Build and perform ordered set lists of song notes.",
+	"author": "Matt Bowers",
+	"isDesktopOnly": false
+}

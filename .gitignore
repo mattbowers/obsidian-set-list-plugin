@@ -1,0 +1,8 @@
+node_modules/
+
+# build output — manifest.json/versions.json/styles.css are committed, main.js is not
+main.js
+*.js.map
+
+.DS_Store
+.vscode/*
