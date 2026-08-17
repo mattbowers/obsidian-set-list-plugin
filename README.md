@@ -19,6 +19,8 @@ ACT 2
 [[Enola Gay.pdf]]
 ```
 
+Opening a SetList note switches it into Edit view automatically. If Source Mode is enabled for the note, the raw markdown is shown instead.
+
 ## Commands
 
 Available when the active note is a SetList note:
@@ -26,15 +28,14 @@ Available when the active note is a SetList note:
 - **Set List: Switch to edit view** — build and maintain the set list.
 - **Set List: Switch to stage view** — perform it live.
 
-If Source Mode is enabled for the note, the raw markdown is shown instead of either view.
-
 ## Edit view
 
 - **Add song** — pick any markdown or PDF file in the vault to append to the set list.
 - **Remove** — remove a song from the list.
 - Drag and drop a song row to reorder it.
-- Click a song row to select it and see a live preview alongside the list.
+- Click a song row to select it.
 - **Enter stage view** — jumps into Stage view starting at the selected song (or the first song if none is selected).
+- **Source mode** — drops back to the raw markdown note in Source Mode, e.g. to edit frontmatter or troubleshoot. Since the note stays in Source Mode, it won't auto-switch back to Edit view next time it's opened; use the command or reopen it in Live Preview/Reading view to get Edit view back.
 
 ## Stage view
 

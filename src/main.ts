@@ -1,9 +1,11 @@
-import { Plugin, TFile } from "obsidian";
+import { MarkdownView, Plugin, TFile } from "obsidian";
 import { isSetListFile } from "./setlist/parser";
 import { SetListEditView } from "./views/SetListEditView";
 import { SetListStageView } from "./views/SetListStageView";
 import { SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./views/viewTypes";
 import { installSidebarSwipeGuard } from "./gestures/sidebarSwipeGuard";
+
+const MAX_OPEN_EDIT_VIEW_ATTEMPTS = 10;
 
 export default class SetListPlugin extends Plugin {
 	private uninstallSwipeGuard: (() => void) | null = null;
@@ -18,6 +20,12 @@ export default class SetListPlugin extends Plugin {
 		this.uninstallSwipeGuard = installSidebarSwipeGuard(
 			this.app,
 			() => this.app.workspace.getActiveViewOfType(SetListStageView) !== null
+		);
+
+		this.registerEvent(
+			this.app.workspace.on("file-open", (file) => {
+				window.requestAnimationFrame(() => void this.maybeOpenEditView(file, 0));
+			})
 		);
 	}
 
@@ -44,6 +52,40 @@ export default class SetListPlugin extends Plugin {
 				return true;
 			},
 		});
+	}
+
+	private async maybeOpenEditView(file: TFile | null, attempt: number): Promise<void> {
+		if (!file) return;
+
+		const cache = this.app.metadataCache.getFileCache(file);
+		if (!isSetListFile(cache)) return;
+
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view || view.file?.path !== file.path) return;
+
+		const state = view.getState();
+		if (state.mode === "source" && state.source === true) return;
+
+		const leaf = view.leaf;
+		try {
+			await leaf.setViewState({
+				type: SET_LIST_EDIT_VIEW_TYPE,
+				state: { file: file.path },
+			});
+		} catch (err) {
+			console.error("[SetList] file-open: setViewState threw", err);
+			return;
+		}
+
+		if (leaf.view.getViewType() === SET_LIST_EDIT_VIEW_TYPE) return;
+
+		// Obsidian's own file-opening pipeline can still be mid-flight at this point and
+		// stomps the switch back to markdown; retry on the next frame until it sticks.
+		if (attempt < MAX_OPEN_EDIT_VIEW_ATTEMPTS) {
+			window.requestAnimationFrame(() => void this.maybeOpenEditView(file, attempt + 1));
+		} else {
+			console.warn("[SetList] file-open: gave up switching to edit view", file.path);
+		}
 	}
 
 	private activeSetListFile(): TFile | null {

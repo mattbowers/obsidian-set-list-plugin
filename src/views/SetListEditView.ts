@@ -5,8 +5,7 @@ import { addSong, removeSong, reorder } from "../setlist/mutations";
 import { persistSetList } from "../setlist/persist";
 import { findFirstSongIndex } from "../setlist/navigation";
 import { renderBuildBadge } from "../ui/buildBadge";
-import { renderSong } from "../render/renderSong";
-import { SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./viewTypes";
+import { MARKDOWN_VIEW_TYPE, SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./viewTypes";
 import type { ParsedSetList, SongEntry } from "../setlist/types";
 
 export class SetListEditView extends BaseSetListView {
@@ -26,41 +25,28 @@ export class SetListEditView extends BaseSetListView {
 		container.addClass("set-list-edit-view");
 		renderBuildBadge(container, this.plugin);
 
-		const layout = container.createDiv({ cls: "set-list-edit-layout" });
-
-		const listPane = layout.createDiv({ cls: "set-list-edit-list-pane" });
-		const toolbar = listPane.createDiv({ cls: "set-list-toolbar" });
+		const toolbar = container.createDiv({ cls: "set-list-toolbar" });
 		toolbar.createEl("button", { text: "Add song" }).addEventListener("click", () => this.openSongPicker());
 		toolbar
 			.createEl("button", { text: "Enter stage view" })
 			.addEventListener("click", () => this.enterStageView());
+		toolbar
+			.createEl("button", { text: "Source mode" })
+			.addEventListener("click", () => this.openAsSourceMode());
 
-		const list = listPane.createDiv({ cls: "set-list-rows" });
+		const list = container.createDiv({ cls: "set-list-rows" });
+		let songNumber = 0;
 		this.parsed.entries.forEach((entry, index) => {
 			if (entry.type === "song") {
-				this.renderSongRow(list, entry, index);
+				this.renderSongRow(list, entry, index, songNumber);
+				songNumber += 1;
 			} else if (entry.raw.trim().length > 0) {
 				list.createDiv({ cls: "set-list-row set-list-row-text", text: entry.raw });
 			}
 		});
-
-		const previewPane = layout.createDiv({ cls: "set-list-edit-preview-pane" });
-		this.renderPreview(previewPane);
 	}
 
-	private renderPreview(previewPane: HTMLElement): void {
-		const selected = this.selectedIndex !== null ? this.parsed.entries[this.selectedIndex] : undefined;
-		if (!selected || selected.type !== "song") {
-			previewPane.createDiv({ cls: "set-list-song-missing", text: "Select a song to preview it" });
-			return;
-		}
-
-		const readingView = previewPane.createDiv({ cls: "set-list-song-container markdown-reading-view" });
-		const previewView = readingView.createDiv({ cls: "markdown-preview-view" });
-		void renderSong(this.app, this, previewView, selected.file);
-	}
-
-	private renderSongRow(list: HTMLElement, entry: SongEntry, index: number): void {
+	private renderSongRow(list: HTMLElement, entry: SongEntry, index: number, songNumber: number): void {
 		const row = list.createDiv({ cls: "set-list-row set-list-row-song" });
 		row.setAttribute("draggable", "true");
 		if (!entry.file) {
@@ -70,6 +56,7 @@ export class SetListEditView extends BaseSetListView {
 			row.addClass("set-list-row-selected");
 		}
 
+		row.createSpan({ cls: "set-list-row-number", text: String(songNumber).padStart(2, "0") });
 		row.createSpan({ cls: "set-list-row-label", text: entry.displayText });
 		row.createEl("button", { cls: "set-list-row-remove", text: "Remove" }).addEventListener("click", (evt) => {
 			evt.stopPropagation();
@@ -155,6 +142,16 @@ export class SetListEditView extends BaseSetListView {
 		void this.leaf.setViewState({
 			type: SET_LIST_STAGE_VIEW_TYPE,
 			state: { file: this.file.path, index },
+		});
+	}
+
+	private openAsSourceMode(): void {
+		if (!this.file) return;
+		// Explicit Source Mode (state.source: true) is respected by main.ts's
+		// auto-switch-to-edit-view handler, so this stays put on reopen.
+		void this.leaf.setViewState({
+			type: MARKDOWN_VIEW_TYPE,
+			state: { file: this.file.path, mode: "source", source: true },
 		});
 	}
 }

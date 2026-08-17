@@ -32,7 +32,7 @@ Each build bakes a `__BUILD_TIME__` timestamp (via esbuild `define`) into the bu
 - `src/views/`:
   - `viewTypes.ts` — the two view-type string constants (kept separate to avoid a circular import between the two view files).
   - `BaseSetListView.ts` — shared `FileView` base: parses on load, re-parses on `metadataCache.on("changed", ...)` (not `vault.on("modify")` — the latter fires before the metadata cache re-indexes, which caused a stale-render bug).
-  - `SetListEditView.ts` — toolbar (add/remove/reorder via drag-and-drop with insertion-mark indicators/enter stage view), a live preview pane for the selected song (reuses `renderSong`).
+  - `SetListEditView.ts` — toolbar (add/remove/reorder via drag-and-drop with insertion-mark indicators/enter stage view/drop to raw markdown Source Mode, the escape hatch now that Edit view opens automatically — see `main.ts`).
   - `SetListStageView.ts` — persistent DOM scaffold (built once in `initScaffold`, re-rendered content-only on navigation) layering a gesture-capture overlay over the rendered song; `currentIndex` persisted via `getState`/`setState`.
 - `src/render/renderSong.ts` — renders a song file through Obsidian's real `MarkdownRenderer.render` pipeline (so third-party post-processors like `chord-sheets-mb` run normally); non-md files (e.g. PDFs) render via a synthetic `![[path]]` embed rather than a hand-rolled viewer.
 - `src/gestures/`:
@@ -45,6 +45,6 @@ Each build bakes a `__BUILD_TIME__` timestamp (via esbuild `define`) into the bu
 
 ## Design notes worth preserving
 
-- Views are only reachable via the two explicit commands (`checkCallback` gated on `isSetListFile`) — there's no hijacking of the default view for all `.md` files, so normal notes and Source Mode are untouched.
+- Views are reachable via the two explicit commands (`checkCallback` gated on `isSetListFile`), plus `main.ts`'s `file-open` handler auto-switches a set-list note into Edit view every time it's opened as a plain `MarkdownView` — normal (non-set-list) notes are never touched, and a note the user has explicitly put into Source Mode (`state.mode === "source" && state.source === true`) is left alone rather than force-switched. `SetListEditView`'s "Source mode" button is the escape hatch back to raw markdown; it sets that same `source: true` state so the note stays put on next open instead of immediately auto-switching back. The `setViewState` call in the `file-open` handler races Obsidian's own still-in-flight file-opening pipeline, which can silently revert it back to `markdown` right after it resolves — `maybeOpenEditView` re-checks the resulting view type and retries on the next `requestAnimationFrame` (up to `MAX_OPEN_EDIT_VIEW_ATTEMPTS`) rather than trusting a single fixed delay.
 - `parseSetList`/`resolveLink` take an injected callback rather than calling `metadataCache.getFirstLinkpathDest` directly, keeping the whole `setlist/` module testable without a real Obsidian runtime (the `obsidian` npm package is types-only, so `import type { TFile } from "obsidian"` is safe in tests).
 - Stage view's gesture overlay intentionally intercepts every pointer event over the rendered song (so a mistimed tap during a performance can't hit a real link) — only vertical scroll passes through, via CSS `touch-action: pan-y`, not JS.
