@@ -1,4 +1,4 @@
-import { TFile } from "obsidian";
+import { setIcon, setTooltip, TFile } from "obsidian";
 import { BaseSetListView } from "./BaseSetListView";
 import { SongPickerModal } from "../ui/SongPickerModal";
 import { addSong, removeSong, reorder } from "../setlist/mutations";
@@ -40,13 +40,9 @@ export class SetListEditView extends BaseSetListView {
 		renderBuildBadge(container, this.plugin);
 
 		const toolbar = container.createDiv({ cls: "set-list-toolbar" });
-		toolbar.createEl("button", { text: "Add song" }).addEventListener("click", () => this.openSongPicker());
-		toolbar
-			.createEl("button", { text: "Enter stage view" })
-			.addEventListener("click", () => this.enterStageView());
-		toolbar
-			.createEl("button", { text: "Source mode" })
-			.addEventListener("click", () => this.openAsSourceMode());
+		this.createIconButton(toolbar, "plus", "Add song", () => this.openSongPicker());
+		this.createIconButton(toolbar, "presentation", "Enter stage view", () => this.enterStageView());
+		this.createIconButton(toolbar, "code", "Source mode", () => this.openAsSourceMode());
 
 		const list = container.createDiv({ cls: "set-list-rows" });
 		list.addEventListener("dragover", (evt) => {
@@ -83,10 +79,10 @@ export class SetListEditView extends BaseSetListView {
 
 		row.createSpan({ cls: "set-list-row-number", text: String(songNumber).padStart(2, "0") });
 		row.createSpan({ cls: "set-list-row-label", text: entry.displayText });
-		row.createEl("button", { cls: "set-list-row-remove", text: "Remove" }).addEventListener("click", (evt) => {
+		this.createIconButton(row, "trash-2", "Remove", (evt) => {
 			evt.stopPropagation();
 			void this.persist(removeSong(this.parsed, index));
-		});
+		}, "set-list-row-remove");
 
 		row.addEventListener("click", () => {
 			this.selectedIndex = index;
@@ -171,6 +167,20 @@ export class SetListEditView extends BaseSetListView {
 			row.style.transform = "";
 		}
 		this.shiftedRowEls = [];
+	}
+
+	private createIconButton(
+		parent: HTMLElement,
+		icon: string,
+		tooltip: string,
+		onClick: (evt: MouseEvent) => void,
+		extraCls?: string
+	): HTMLButtonElement {
+		const button = parent.createEl("button", { cls: extraCls ? `clickable-icon ${extraCls}` : "clickable-icon" });
+		setIcon(button, icon);
+		setTooltip(button, tooltip);
+		button.addEventListener("click", onClick);
+		return button;
 	}
 
 	private openSongPicker(): void {

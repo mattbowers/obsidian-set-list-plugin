@@ -48,7 +48,7 @@
 }
 
 .set-list-row-remove {
-	font-size: var(--font-ui-smaller);
+	flex-shrink: 0;
 }
 
 .set-list-row-song.set-list-row-unresolved {
