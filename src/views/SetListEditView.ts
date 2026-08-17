@@ -58,7 +58,7 @@ export class SetListEditView extends BaseSetListView {
 			this.handleDrop(evt);
 		});
 
-		let songNumber = 0;
+		let songNumber = 1;
 		this.parsed.entries.forEach((entry, index) => {
 			if (entry.type === "song") {
 				this.renderSongRow(list, entry, index, songNumber);
