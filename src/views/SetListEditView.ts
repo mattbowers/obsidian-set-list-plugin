@@ -8,8 +8,22 @@ import { renderBuildBadge } from "../ui/buildBadge";
 import { MARKDOWN_VIEW_TYPE, SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./viewTypes";
 import type { ParsedSetList, SongEntry } from "../setlist/types";
 
+interface DragRow {
+	el: HTMLElement;
+	entryIndex: number;
+	mid: number;
+}
+
 export class SetListEditView extends BaseSetListView {
 	private selectedIndex: number | null = null;
+	private dragFromIndex: number | null = null;
+	private dragFromEl: HTMLElement | null = null;
+	private dragRowExtent: number = 0;
+	// Snapshotted once at dragstart: row midpoints/heights change as rows shuffle out of
+	// the way, but drop-target math must stay anchored to the pre-shuffle layout, otherwise
+	// the target keeps moving under the cursor and the computed index oscillates/cancels out.
+	private dragRowLayout: DragRow[] = [];
+	private shiftedRowEls: HTMLElement[] = [];
 
 	getViewType(): string {
 		return SET_LIST_EDIT_VIEW_TYPE;
@@ -35,13 +49,23 @@ export class SetListEditView extends BaseSetListView {
 			.addEventListener("click", () => this.openAsSourceMode());
 
 		const list = container.createDiv({ cls: "set-list-rows" });
+		list.addEventListener("dragover", (evt) => {
+			evt.preventDefault();
+			this.updateDragShuffle(evt.clientY);
+		});
+		list.addEventListener("drop", (evt) => {
+			evt.preventDefault();
+			this.handleDrop(evt);
+		});
+
 		let songNumber = 0;
 		this.parsed.entries.forEach((entry, index) => {
 			if (entry.type === "song") {
 				this.renderSongRow(list, entry, index, songNumber);
 				songNumber += 1;
 			} else if (entry.raw.trim().length > 0) {
-				list.createDiv({ cls: "set-list-row set-list-row-text", text: entry.raw });
+				const textRow = list.createDiv({ cls: "set-list-row set-list-row-text", text: entry.raw });
+				textRow.dataset.entryIndex = String(index);
 			}
 		});
 	}
@@ -49,6 +73,7 @@ export class SetListEditView extends BaseSetListView {
 	private renderSongRow(list: HTMLElement, entry: SongEntry, index: number, songNumber: number): void {
 		const row = list.createDiv({ cls: "set-list-row set-list-row-song" });
 		row.setAttribute("draggable", "true");
+		row.dataset.entryIndex = String(index);
 		if (!entry.file) {
 			row.addClass("set-list-row-unresolved");
 		}
@@ -71,45 +96,81 @@ export class SetListEditView extends BaseSetListView {
 		row.addEventListener("dragstart", (evt) => {
 			evt.dataTransfer?.setData("text/plain", String(index));
 			row.addClass("set-list-row-dragging");
+			this.dragFromIndex = index;
+			this.dragFromEl = row;
+			const gap = parseFloat(getComputedStyle(list).rowGap) || 0;
+			this.dragRowExtent = row.getBoundingClientRect().height + gap;
+			this.dragRowLayout = Array.from(list.children).map((el) => {
+				const rowEl = el as HTMLElement;
+				const rect = rowEl.getBoundingClientRect();
+				return { el: rowEl, entryIndex: Number(rowEl.dataset.entryIndex), mid: rect.top + rect.height / 2 };
+			});
 		});
 		row.addEventListener("dragend", () => {
 			row.removeClass("set-list-row-dragging");
-			this.clearDropIndicators(list);
-		});
-		row.addEventListener("dragover", (evt) => {
-			evt.preventDefault();
-			this.clearDropIndicators(list);
-			row.addClass(this.isDropBefore(row, evt) ? "set-list-row-drop-before" : "set-list-row-drop-after");
-		});
-		row.addEventListener("dragleave", () => {
-			row.removeClass("set-list-row-drop-before");
-			row.removeClass("set-list-row-drop-after");
-		});
-		row.addEventListener("drop", (evt) => {
-			evt.preventDefault();
-			this.clearDropIndicators(list);
-
-			const fromIndex = Number(evt.dataTransfer?.getData("text/plain"));
-			if (Number.isNaN(fromIndex)) return;
-
-			let toIndex = this.isDropBefore(row, evt) ? index : index + 1;
-			if (fromIndex < toIndex) toIndex -= 1;
-			if (toIndex === fromIndex) return;
-
-			void this.persist(reorder(this.parsed, fromIndex, toIndex));
+			this.resetDragShuffle();
+			this.dragFromIndex = null;
+			this.dragFromEl = null;
+			this.dragRowLayout = [];
 		});
 	}
 
-	private isDropBefore(row: HTMLElement, evt: DragEvent): boolean {
-		const rect = row.getBoundingClientRect();
-		return evt.clientY - rect.top < rect.height / 2;
+	private handleDrop(evt: DragEvent): void {
+		this.resetDragShuffle();
+
+		const fromIndex = Number(evt.dataTransfer?.getData("text/plain"));
+		if (Number.isNaN(fromIndex)) return;
+
+		const insertBeforeEntryIndex = this.findInsertionEntryIndex(evt.clientY);
+		if (insertBeforeEntryIndex === null) return;
+
+		let toIndex = insertBeforeEntryIndex;
+		if (fromIndex < toIndex) toIndex -= 1;
+		if (toIndex === fromIndex) return;
+
+		void this.persist(reorder(this.parsed, fromIndex, toIndex));
 	}
 
-	private clearDropIndicators(list: HTMLElement): void {
-		list.querySelectorAll<HTMLElement>(".set-list-row-drop-before, .set-list-row-drop-after").forEach((el) => {
-			el.removeClass("set-list-row-drop-before");
-			el.removeClass("set-list-row-drop-after");
-		});
+	/** Entries-array index to insert before, based on the frozen pre-drag row layout. */
+	private findInsertionEntryIndex(clientY: number): number | null {
+		if (!this.dragRowLayout.length) return null;
+
+		const domIndex = this.dragRowLayout.filter((row) => row.mid < clientY).length;
+		if (domIndex < this.dragRowLayout.length) {
+			return this.dragRowLayout[domIndex].entryIndex;
+		}
+		return this.parsed.entries.length;
+	}
+
+	private updateDragShuffle(clientY: number): void {
+		if (!this.dragFromEl || this.dragFromIndex === null || !this.dragRowLayout.length) return;
+
+		const domFromIndex = this.dragRowLayout.findIndex((row) => row.el === this.dragFromEl);
+		const domTargetIndex = this.dragRowLayout.filter((row) => row.mid < clientY).length;
+		if (domFromIndex === -1) return;
+
+		this.resetDragShuffle();
+		if (domTargetIndex > domFromIndex) {
+			for (let i = domFromIndex + 1; i < domTargetIndex; i++) {
+				this.shiftRow(this.dragRowLayout[i].el, -this.dragRowExtent);
+			}
+		} else if (domTargetIndex < domFromIndex) {
+			for (let i = domTargetIndex; i < domFromIndex; i++) {
+				this.shiftRow(this.dragRowLayout[i].el, this.dragRowExtent);
+			}
+		}
+	}
+
+	private shiftRow(row: HTMLElement, byPx: number): void {
+		row.style.transform = `translateY(${byPx}px)`;
+		this.shiftedRowEls.push(row);
+	}
+
+	private resetDragShuffle(): void {
+		for (const row of this.shiftedRowEls) {
+			row.style.transform = "";
+		}
+		this.shiftedRowEls = [];
 	}
 
 	private openSongPicker(): void {

@@ -14,6 +14,7 @@
 .set-list-row {
 	padding: var(--size-4-1) var(--size-4-2);
 	border-radius: var(--radius-s);
+	transition: transform 150ms ease;
 }
 
 .set-list-row-song {
@@ -39,14 +40,7 @@
 
 .set-list-row-song.set-list-row-dragging {
 	opacity: 0.5;
-}
-
-.set-list-row-song.set-list-row-drop-before {
-	box-shadow: 0 -2px 0 0 var(--interactive-accent);
-}
-
-.set-list-row-song.set-list-row-drop-after {
-	box-shadow: 0 2px 0 0 var(--interactive-accent);
+	transition: none;
 }
 
 .set-list-row-song.set-list-row-selected {
