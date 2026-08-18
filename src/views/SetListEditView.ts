@@ -39,7 +39,12 @@ export class SetListEditView extends BaseSetListView {
 		container.addClass("set-list-edit-view");
 		renderBuildBadge(container, this.plugin);
 
-		const toolbar = container.createDiv({ cls: "set-list-toolbar" });
+		// A dedicated scroll container (rather than relying on Obsidian's own .view-content
+		// scrolling/padding on `container`) so the toolbar's `position: sticky` has a
+		// zero-padding ancestor to stick flush against, with no gap the list peeks through.
+		const scroll = container.createDiv({ cls: "set-list-scroll" });
+
+		const toolbar = scroll.createDiv({ cls: "set-list-toolbar" });
 		this.createIconButton(toolbar, "plus", "Add song", () => this.openSongPicker());
 		this.createIconButton(
 			toolbar,
@@ -60,7 +65,7 @@ export class SetListEditView extends BaseSetListView {
 		this.createIconButton(toolbar, "presentation", "Enter stage view", () => this.enterStageView());
 		this.createIconButton(toolbar, "code", "Source mode", () => this.openAsSourceMode());
 
-		const list = container.createDiv({ cls: "set-list-rows" });
+		const list = scroll.createDiv({ cls: "set-list-rows" });
 		list.addEventListener("dragover", (evt) => {
 			evt.preventDefault();
 			this.updateDragShuffle(evt.clientY);
