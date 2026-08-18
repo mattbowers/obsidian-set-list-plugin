@@ -1,14 +1,15 @@
 import { setIcon, setTooltip, TFile } from "obsidian";
 import { BaseSetListView } from "./BaseSetListView";
 import { SongPickerModal } from "../ui/SongPickerModal";
-import { addSong, removeSong, replaceSong, reorder } from "../setlist/mutations";
+import { addSong, appendEntries, removeSong, replaceSong, reorder } from "../setlist/mutations";
 import { persistSetList } from "../setlist/persist";
 import { findFirstSongIndex } from "../setlist/navigation";
 import { getBandName as readBandName } from "../setlist/parser";
 import { addTagToAllSongs, sanitizeTag } from "../setlist/tagging";
+import { findBestSongMatch } from "../setlist/songMatch";
 import { renderBuildBadge } from "../ui/buildBadge";
 import { MARKDOWN_VIEW_TYPE, SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./viewTypes";
-import type { ParsedSetList, SongEntry } from "../setlist/types";
+import type { ParsedSetList, SetListEntry, SongEntry } from "../setlist/types";
 
 interface DragRow {
 	el: HTMLElement;
@@ -96,6 +97,9 @@ export class SetListEditView extends BaseSetListView {
 		// Set-list-level actions (as opposed to the selected-song actions above) sit on the
 		// right, so their grouping signals they act on the set list itself, not a song.
 		const toolbarRight = toolbar.createDiv({ cls: "set-list-toolbar-group-right" });
+		this.createIconButton(toolbarRight, "clipboard-paste", "Paste songs from clipboard", () =>
+			void this.pasteSongsFromClipboard()
+		);
 		const bandName = this.getBandName();
 		if (bandName) {
 			this.createIconButton(toolbarRight, "tag", `Tag all songs with "${bandName}"`, () =>
@@ -342,6 +346,37 @@ export class SetListEditView extends BaseSetListView {
 		const tag = sanitizeTag(band);
 		if (!tag) return;
 		void addTagToAllSongs(this.app, this.parsed, tag);
+	}
+
+	/**
+	 * Best-effort import: each non-blank clipboard line becomes a song row if it matches a
+	 * vault file (see findBestSongMatch), or is appended as a plain text row otherwise — so an
+	 * unmatched line is still visible to fix up by hand rather than silently dropped.
+	 */
+	async pasteSongsFromClipboard(): Promise<void> {
+		if (!this.file) return;
+
+		let text: string;
+		try {
+			text = await navigator.clipboard.readText();
+		} catch (err) {
+			console.error("[SetList] Failed to read clipboard", err);
+			return;
+		}
+
+		const lines = text
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.filter((line) => line.length > 0);
+		if (lines.length === 0) return;
+
+		const sourcePath = this.file.path;
+		const newEntries: SetListEntry[] = lines.map((line) => {
+			const match = findBestSongMatch(this.app, line);
+			return match ? this.createSongEntry(match, sourcePath) : { type: "text", line: -1, raw: line };
+		});
+
+		void this.persist(appendEntries(this.parsed, newEntries));
 	}
 
 	private openAsSourceMode(): void {

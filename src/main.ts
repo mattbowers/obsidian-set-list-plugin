@@ -177,6 +177,17 @@ export default class SetListPlugin extends Plugin {
 				return true;
 			},
 		});
+
+		this.addCommand({
+			id: "paste-songs-from-clipboard",
+			name: "Paste songs from clipboard",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
+				if (!view) return false;
+				if (!checking) void view.pasteSongsFromClipboard();
+				return true;
+			},
+		});
 	}
 
 	private addStageViewNavigationCommands(): void {

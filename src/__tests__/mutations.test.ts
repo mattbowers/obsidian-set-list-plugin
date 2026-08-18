@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addSong, removeSong, replaceSong, reorder } from "../setlist/mutations";
+import { addSong, appendEntries, removeSong, replaceSong, reorder } from "../setlist/mutations";
 import type { ParsedSetList, SongEntry, TextEntry } from "../setlist/types";
 
 function song(displayText: string): SongEntry {
@@ -53,6 +53,20 @@ describe("replaceSong", () => {
 		const parsed = setListOf(song("Wow"));
 		replaceSong(parsed, 0, song("Moving"));
 		expect(parsed.entries.map((e) => e.raw)).toEqual(["[[Wow]]"]);
+	});
+});
+
+describe("appendEntries", () => {
+	it("appends a mix of song and text entries in order, after existing rows", () => {
+		const parsed = setListOf(song("Wow"));
+		const result = appendEntries(parsed, [text("ACT 2"), song("Moving"), song("Cloudbusting")]);
+		expect(result.entries.map((e) => e.raw)).toEqual(["[[Wow]]", "ACT 2", "[[Moving]]", "[[Cloudbusting]]"]);
+	});
+
+	it("does not mutate the input", () => {
+		const parsed = setListOf(song("Wow"));
+		appendEntries(parsed, [song("Moving")]);
+		expect(parsed.entries).toHaveLength(1);
 	});
 });
 

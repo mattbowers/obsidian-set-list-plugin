@@ -33,7 +33,7 @@ Available whenever the active note/view is a SetList (name/status varies slightl
 - **Set List: New set list** — same as the ribbon icon.
 - **Set List: Switch to edit view** / **Switch to stage view** — switch between the two views. Switching to Stage view starts at the currently selected song (or the first song if none is selected), matching Edit view's own "Enter stage view" button.
 - **Set List: Source mode** — drop back to the raw markdown note.
-- **Set List: Add song** / **Replace selected song** / **Remove selected song** / **Open song as new tab** — mirror the Edit view toolbar buttons; only listed when there's an active Edit view (and, where relevant, a valid song selection).
+- **Set List: Add song** / **Replace selected song** / **Remove selected song** / **Open song as new tab** / **Paste songs from clipboard** — mirror the Edit view toolbar buttons; only listed when there's an active Edit view (and, where relevant, a valid song selection).
 - **Set List: Tag all songs with band** — only listed when the set list has a `band` property.
 - **Set List: Next song** / **Previous song** — only listed while Stage view is active.
 
@@ -46,6 +46,7 @@ The toolbar is grouped into song actions (left) and set-list-level actions (righ
 - **Remove selected song** — remove the selected song from the list.
 - **Enter stage view** — jumps into Stage view starting at the selected song (or the first song if none is selected).
 - **Open song as new tab** — opens the selected song's own note in a new tab, e.g. to edit it, or keep it open alongside the set list.
+- **Paste songs from clipboard** — reads the clipboard as plain text and treats each non-blank line as a song to add: a line that matches a vault file's name (exact match preferred, otherwise the best fuzzy match) becomes a proper song row; a line that matches nothing is still added, as plain text, so it stays visible to fix up by hand rather than being silently dropped.
 - **Tag all songs with band** *(only if the set list has a `band` property)* — adds a tag for it to every song's frontmatter, skipping any song that already has it.
 - **Source mode** — drops back to the raw markdown note in Source Mode, e.g. to edit frontmatter or troubleshoot. Since the note stays in Source Mode, it won't auto-switch back to Edit view next time it's opened; use the command or reopen it in Live Preview/Reading view to get Edit view back.
 

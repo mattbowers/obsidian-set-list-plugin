@@ -1,9 +1,14 @@
-import type { ParsedSetList, SongEntry } from "./types";
+import type { ParsedSetList, SetListEntry, SongEntry } from "./types";
 
 export function addSong(parsed: ParsedSetList, entry: SongEntry, atIndex: number = parsed.entries.length): ParsedSetList {
 	const entries = [...parsed.entries];
 	entries.splice(atIndex, 0, entry);
 	return { ...parsed, entries };
+}
+
+/** Appends a batch of entries (song and/or text) in one go, e.g. importing several rows at once. */
+export function appendEntries(parsed: ParsedSetList, entries: SetListEntry[]): ParsedSetList {
+	return { ...parsed, entries: [...parsed.entries, ...entries] };
 }
 
 export function removeSong(parsed: ParsedSetList, index: number): ParsedSetList {
