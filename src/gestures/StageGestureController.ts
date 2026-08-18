@@ -5,39 +5,40 @@ export interface PointerSample {
 }
 
 export interface StageGestureControllerOptions {
-	onTapLeft: () => void;
-	onTapRight: () => void;
+	onSwipeLeft: () => void;
+	onSwipeRight: () => void;
 	onLongPress: () => void;
-	/** Width of the tappable area, used to size the left/right edge zones. */
-	getContainerWidth: () => number;
-	/** Fraction of the container width, on each side, counted as an edge zone. */
-	edgeZoneRatio?: number;
-	tapMaxDuration?: number;
-	tapMaxMovement?: number;
+	/** Minimum horizontal travel, in px, to count as a swipe rather than an incidental drag. */
+	swipeMinDistance?: number;
+	/** Vertical travel must stay under this fraction of horizontal travel, so a scroll/diagonal drag doesn't register as a swipe. */
+	swipeMaxVerticalRatio?: number;
 	longPressDuration?: number;
 	longPressMaxMovement?: number;
 }
 
 type ResolvedOptions = Required<StageGestureControllerOptions>;
 
-const DEFAULTS: Omit<ResolvedOptions, "onTapLeft" | "onTapRight" | "onLongPress" | "getContainerWidth"> = {
-	edgeZoneRatio: 0.25,
-	tapMaxDuration: 300,
-	tapMaxMovement: 10,
+const DEFAULTS: Omit<ResolvedOptions, "onSwipeLeft" | "onSwipeRight" | "onLongPress"> = {
+	swipeMinDistance: 60,
+	swipeMaxVerticalRatio: 0.6,
 	longPressDuration: 600,
 	longPressMaxMovement: 10,
 };
 
 /**
- * Classifies taps on the Stage view's gesture overlay: a quick tap near the
- * left/right edge moves to the previous/next song, a stationary long press
- * returns to the Edit view. Vertical scrolling is left to the browser
- * (CSS `touch-action: pan-y`) and never reaches this controller.
+ * Classifies gestures on the Stage view's gesture overlay: a horizontal swipe
+ * moves to the previous/next song, a stationary long press returns to the
+ * Edit view. Vertical scrolling is left to the browser (CSS `touch-action:
+ * pan-y`) and never reaches this controller.
  */
 export class StageGestureController {
 	private readonly options: ResolvedOptions;
 	private start: PointerSample | null = null;
-	/** Largest distance from `start` seen via onPointerMove, used to tell a real drag/scroll apart from a cancel that reports stale (start-like) coordinates. */
+	/** Most recent onPointerMove sample — the trustworthy fallback for a cancel's own
+	 *  position, which (per Obsidian's own edge-swipe recognizer) is often stale/start-like
+	 *  regardless of how far the finger actually travelled. */
+	private last: PointerSample | null = null;
+	/** Largest distance from `start` seen via onPointerMove, used to tell a real drag apart from a cancel that reports stale (start-like) coordinates. */
 	private maxMovement = 0;
 
 	constructor(options: StageGestureControllerOptions) {
@@ -56,68 +57,68 @@ export class StageGestureController {
 
 	onPointerDown(sample: PointerSample): void {
 		this.start = sample;
+		this.last = sample;
 		this.maxMovement = 0;
 	}
 
 	/** Passive tracking only — never suppresses the browser's native scroll handling. */
 	onPointerMove(sample: PointerSample): void {
 		if (!this.start) return;
+		this.last = sample;
 		const distance = Math.hypot(sample.x - this.start.x, sample.y - this.start.y);
 		if (distance > this.maxMovement) this.maxMovement = distance;
 	}
 
 	onPointerUp(sample: PointerSample): void {
 		if (!this.start) return;
-
-		const dt = sample.t - this.start.t;
-		const distance = Math.max(Math.hypot(sample.x - this.start.x, sample.y - this.start.y), this.maxMovement);
-		const startX = this.start.x;
-
-		if (distance <= this.options.tapMaxMovement && dt <= this.options.tapMaxDuration) {
-			this.handleTap(startX);
-		} else if (distance <= this.options.longPressMaxMovement && dt >= this.options.longPressDuration) {
-			this.options.onLongPress();
-		}
-
+		this.classify(sample);
 		this.reset();
 	}
 
 	/**
-	 * A cancel fired quickly, with no real movement observed via onPointerMove,
-	 * usually means Obsidian's own edge-swipe gesture recognizer stole the
-	 * touch near the screen edge (it still happens even though
-	 * `sidebarSwipeGuard` stops the sidebar from actually opening) — treat
-	 * that as a completed tap rather than silently dropping it. A cancel that
-	 * followed real movement (e.g. the start of a vertical scroll, which the
-	 * browser can also resolve via a cancel) must NOT be treated as a tap,
-	 * since the cancel event's own coordinates are often stale/start-like
-	 * regardless of how far the finger actually travelled — that's why this
-	 * relies on `maxMovement` instead of the cancel sample's own distance.
+	 * A cancel usually means Obsidian's own edge-swipe gesture recognizer stole the touch
+	 * (it still happens even though `sidebarSwipeGuard` stops the sidebar from actually
+	 * opening). Its own coordinates are often stale/start-like regardless of how far the
+	 * finger actually travelled, so position comes from the last real onPointerMove sample
+	 * instead — but its timestamp is still real, so a stationary long press that gets stolen
+	 * partway through is still classified correctly.
 	 */
 	onPointerCancel(sample?: PointerSample): void {
-		if (this.start && sample && this.maxMovement <= this.options.tapMaxMovement) {
-			const dt = sample.t - this.start.t;
-			if (dt <= this.options.tapMaxDuration) {
-				this.handleTap(this.start.x);
-			}
+		if (this.start) {
+			const position = this.last ?? this.start;
+			const t = sample?.t ?? this.last?.t ?? this.start.t;
+			this.classify({ x: position.x, y: position.y, t });
 		}
-
 		this.reset();
 	}
 
-	private handleTap(x: number): void {
-		const width = this.options.getContainerWidth();
-		const edgeZoneWidth = width * this.options.edgeZoneRatio;
+	private classify(end: PointerSample): void {
+		if (!this.start) return;
 
-		if (x < edgeZoneWidth) {
-			this.options.onTapLeft();
-		} else if (x > width - edgeZoneWidth) {
-			this.options.onTapRight();
+		const dt = end.t - this.start.t;
+		const dx = end.x - this.start.x;
+		const dy = end.y - this.start.y;
+		const distance = Math.max(Math.hypot(dx, dy), this.maxMovement);
+
+		if (distance <= this.options.longPressMaxMovement && dt >= this.options.longPressDuration) {
+			this.options.onLongPress();
+			return;
+		}
+
+		const horizontal = Math.abs(dx);
+		const vertical = Math.abs(dy);
+		if (horizontal >= this.options.swipeMinDistance && vertical <= horizontal * this.options.swipeMaxVerticalRatio) {
+			if (dx < 0) {
+				this.options.onSwipeLeft();
+			} else {
+				this.options.onSwipeRight();
+			}
 		}
 	}
 
 	private reset(): void {
 		this.start = null;
+		this.last = null;
 		this.maxMovement = 0;
 	}
 }

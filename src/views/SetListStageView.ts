@@ -21,10 +21,10 @@ export class SetListStageView extends BaseSetListView {
 	private longPressIndicator: HTMLElement | null = null;
 	private pressStart: { x: number; y: number } | null = null;
 	private readonly gestureController = new StageGestureController({
-		onTapLeft: () => this.goToPrev(),
-		onTapRight: () => this.goToNext(),
+		// Swiping left drags the next song into view, like turning a page forward.
+		onSwipeLeft: () => this.goToNext(),
+		onSwipeRight: () => this.goToPrev(),
 		onLongPress: () => this.exitToEditView(),
-		getContainerWidth: () => this.overlay?.clientWidth ?? 0,
 	});
 
 	getViewType(): string {
