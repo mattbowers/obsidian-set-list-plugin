@@ -33,6 +33,22 @@ export class SetListEditView extends BaseSetListView {
 		return "list-ordered";
 	}
 
+	// Pre-select whatever song was last shown in Stage view for this file, so returning here
+	// — however that happens (long-press gesture, the switch-to-edit-view command, or the
+	// pane's back button all end up here via this same onLoadFile hook) — lands on the right
+	// row. Only applies to a fresh selection; an existing one (e.g. the user already clicked
+	// a row) is left alone.
+	async onLoadFile(file: TFile): Promise<void> {
+		await super.onLoadFile(file);
+		if (this.selectedIndex === null) {
+			const lastStageIndex = this.plugin.lastStageIndexByFile.get(file.path);
+			if (lastStageIndex !== undefined && this.parsed.entries[lastStageIndex]?.type === "song") {
+				this.selectedIndex = lastStageIndex;
+				this.render();
+			}
+		}
+	}
+
 	protected render(): void {
 		const container = this.contentEl;
 		container.empty();

@@ -9,6 +9,11 @@ const MAX_OPEN_EDIT_VIEW_ATTEMPTS = 10;
 
 export default class SetListPlugin extends Plugin {
 	private uninstallSwipeGuard: (() => void) | null = null;
+	// Last song index shown per set-list file in Stage view, kept in sync by SetListStageView's
+	// own render() rather than by any particular way of leaving it (gesture, command palette,
+	// pane back button, ...) so SetListEditView can restore the right selection on load
+	// regardless of how the user got back to it.
+	readonly lastStageIndexByFile: Map<string, number> = new Map();
 
 	async onload() {
 		this.registerView(SET_LIST_EDIT_VIEW_TYPE, (leaf) => new SetListEditView(leaf, this));

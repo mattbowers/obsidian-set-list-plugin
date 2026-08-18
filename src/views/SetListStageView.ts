@@ -128,6 +128,10 @@ export class SetListStageView extends BaseSetListView {
 			return;
 		}
 
+		if (this.file) {
+			this.plugin.lastStageIndexByFile.set(this.file.path, this.currentIndex);
+		}
+
 		const readingView = songArea.createDiv({ cls: "set-list-song-container markdown-reading-view" });
 		const previewView = readingView.createDiv({ cls: "markdown-preview-view" });
 		void renderSong(this.app, this, previewView, songEntry.file);
