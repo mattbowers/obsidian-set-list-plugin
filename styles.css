@@ -86,6 +86,41 @@
 	z-index: 1;
 }
 
+.set-list-longpress-indicator {
+	position: absolute;
+	width: 10px;
+	height: 10px;
+	margin: -5px 0 0 -5px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--interactive-accent);
+	border-radius: 50%;
+	background-color: var(--background-primary);
+	opacity: 0;
+	transform: scale(1);
+	pointer-events: none;
+	/* No base transition: hiding (removing .is-active) must snap back instantly rather than
+	   animate, so no ring lingers after release. */
+}
+
+.set-list-longpress-indicator svg {
+	/* Scales up together with the ring itself, since both are inside the same transformed
+	   element — sized here relative to the 10px unscaled ring, not the final 360px. */
+	width: 5.6px;
+	height: 5.6px;
+	color: var(--interactive-accent);
+}
+
+.set-list-longpress-indicator.is-active {
+	opacity: 0.9;
+	transform: scale(36);
+	transition-property: transform, opacity;
+	transition-timing-function: linear, ease;
+	/* transition-duration is set inline per-press, from StageGestureController's own
+	   longPressDuration, so the fill always matches exactly how long a long press takes. */
+}
+
 .set-list-song-container {
 	padding: var(--size-4-4);
 }

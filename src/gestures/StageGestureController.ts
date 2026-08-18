@@ -44,6 +44,16 @@ export class StageGestureController {
 		this.options = { ...DEFAULTS, ...options };
 	}
 
+	/** Exposed so callers can time visual long-press feedback to match this exactly. */
+	get longPressDuration(): number {
+		return this.options.longPressDuration;
+	}
+
+	/** Exposed so callers can cancel visual long-press feedback once movement rules it out. */
+	get longPressMaxMovement(): number {
+		return this.options.longPressMaxMovement;
+	}
+
 	onPointerDown(sample: PointerSample): void {
 		this.start = sample;
 		this.maxMovement = 0;
