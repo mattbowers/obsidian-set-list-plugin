@@ -254,7 +254,12 @@ export class SetListEditView extends BaseSetListView {
 	private openSongPicker(replaceIndex?: number): void {
 		if (!this.file) return;
 		const sourcePath = this.file.path;
-		new SongPickerModal(this.app, (file) => {
+		const includedPaths = new Set(
+			this.parsed.entries
+				.filter((entry): entry is SongEntry => entry.type === "song" && entry.file !== null)
+				.map((entry) => entry.file!.path)
+		);
+		new SongPickerModal(this.app, includedPaths, (file) => {
 			const entry = this.createSongEntry(file, sourcePath);
 			if (replaceIndex !== undefined) {
 				void this.persist(replaceSong(this.parsed, replaceIndex, entry));

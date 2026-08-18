@@ -108,6 +108,10 @@
 	overflow: hidden;
 }
 
+.set-list-song-picker-included {
+	color: var(--text-faint);
+}
+
 .set-list-build-badge {
 	position: absolute;
 	bottom: var(--size-4-1);
