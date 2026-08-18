@@ -66,7 +66,8 @@ export class SetListStageView extends BaseSetListView {
 		}
 	}
 
-	private goToNext(): void {
+	// Public: also invoked directly by main.ts's "Next/Previous song" commands.
+	goToNext(): void {
 		const next = findNextSongIndex(this.parsed, this.currentIndex);
 		if (next !== null) {
 			this.currentIndex = next;
@@ -74,7 +75,7 @@ export class SetListStageView extends BaseSetListView {
 		}
 	}
 
-	private goToPrev(): void {
+	goToPrev(): void {
 		const prev = findPrevSongIndex(this.parsed, this.currentIndex);
 		if (prev !== null) {
 			this.currentIndex = prev;

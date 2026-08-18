@@ -2,7 +2,7 @@ import { MarkdownView, normalizePath, Plugin, TFile } from "obsidian";
 import { isSetListFile, SET_LIST_FRONTMATTER_TYPE } from "./setlist/parser";
 import { SetListEditView } from "./views/SetListEditView";
 import { SetListStageView } from "./views/SetListStageView";
-import { SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./views/viewTypes";
+import { MARKDOWN_VIEW_TYPE, SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./views/viewTypes";
 import { installSidebarSwipeGuard } from "./gestures/sidebarSwipeGuard";
 
 const MAX_OPEN_EDIT_VIEW_ATTEMPTS = 10;
@@ -20,7 +20,11 @@ export default class SetListPlugin extends Plugin {
 		this.registerView(SET_LIST_STAGE_VIEW_TYPE, (leaf) => new SetListStageView(leaf, this));
 
 		this.addSwitchViewCommand("switch-to-edit-view", "Switch to edit view", SET_LIST_EDIT_VIEW_TYPE);
-		this.addSwitchViewCommand("switch-to-stage-view", "Switch to stage view", SET_LIST_STAGE_VIEW_TYPE);
+		this.addEnterStageViewCommand();
+		this.addSourceModeCommand();
+		this.addNewSetListCommand();
+		this.addEditViewActionCommands();
+		this.addStageViewNavigationCommands();
 
 		this.addRibbonIcon("list-plus", "New set list", () => void this.createNewSetList());
 
@@ -56,6 +60,144 @@ export default class SetListPlugin extends Plugin {
 						state: { file: file.path },
 					});
 				}
+				return true;
+			},
+		});
+	}
+
+	/** Unlike the plain switch-view commands, this routes through the active SetListEditView's
+	 *  own enterStageView() when there is one, so the command matches its toolbar button
+	 *  exactly (selected song, else first song) rather than always starting from scratch. */
+	private addEnterStageViewCommand(): void {
+		this.addCommand({
+			id: "switch-to-stage-view",
+			name: "Switch to stage view",
+			checkCallback: (checking) => {
+				const file = this.activeSetListFile();
+				if (!file) return false;
+
+				if (!checking) {
+					const editView = this.app.workspace.getActiveViewOfType(SetListEditView);
+					if (editView) {
+						editView.enterStageView();
+					} else {
+						void this.app.workspace.getLeaf(false).setViewState({
+							type: SET_LIST_STAGE_VIEW_TYPE,
+							state: { file: file.path },
+						});
+					}
+				}
+				return true;
+			},
+		});
+	}
+
+	private addSourceModeCommand(): void {
+		this.addCommand({
+			id: "open-source-mode",
+			name: "Source mode",
+			checkCallback: (checking) => {
+				const file = this.activeSetListFile();
+				if (!file) return false;
+
+				if (!checking) {
+					// Explicit Source Mode (state.source: true) is respected by the file-open
+					// handler below, so the note stays put on next open.
+					void this.app.workspace.getLeaf(false).setViewState({
+						type: MARKDOWN_VIEW_TYPE,
+						state: { file: file.path, mode: "source", source: true },
+					});
+				}
+				return true;
+			},
+		});
+	}
+
+	private addNewSetListCommand(): void {
+		this.addCommand({
+			id: "new-set-list",
+			name: "New set list",
+			callback: () => void this.createNewSetList(),
+		});
+	}
+
+	private addEditViewActionCommands(): void {
+		this.addCommand({
+			id: "add-song",
+			name: "Add song",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
+				if (!view) return false;
+				if (!checking) view.openSongPicker();
+				return true;
+			},
+		});
+
+		this.addCommand({
+			id: "replace-selected-song",
+			name: "Replace selected song",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
+				if (!view || !view.hasValidSelection()) return false;
+				if (!checking) view.replaceSelectedSong();
+				return true;
+			},
+		});
+
+		this.addCommand({
+			id: "remove-selected-song",
+			name: "Remove selected song",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
+				if (!view || !view.hasValidSelection()) return false;
+				if (!checking) view.removeSelectedSong();
+				return true;
+			},
+		});
+
+		this.addCommand({
+			id: "open-song-as-new-tab",
+			name: "Open song as new tab",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
+				if (!view || !view.getSelectedFile()) return false;
+				if (!checking) view.openSelectedSongAsNewTab();
+				return true;
+			},
+		});
+
+		this.addCommand({
+			id: "tag-all-songs-with-band",
+			name: "Tag all songs with band",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
+				const band = view?.getBandName();
+				if (!view || !band) return false;
+				if (!checking) view.tagAllSongsWithBand(band);
+				return true;
+			},
+		});
+	}
+
+	private addStageViewNavigationCommands(): void {
+		this.addCommand({
+			id: "next-song",
+			name: "Next song",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListStageView);
+				if (!view) return false;
+				if (!checking) view.goToNext();
+				return true;
+			},
+		});
+
+		this.addCommand({
+			id: "previous-song",
+			name: "Previous song",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListStageView);
+				if (!view) return false;
+				if (!checking) view.goToPrev();
 				return true;
 			},
 		});

@@ -251,32 +251,35 @@ export class SetListEditView extends BaseSetListView {
 		return button;
 	}
 
-	private hasValidSelection(): boolean {
+	// Public from here down: called both by the toolbar buttons above and by main.ts's
+	// command-palette registrations, which need a way to invoke (and check-gate) the same
+	// actions on whatever SetListEditView is currently active.
+	hasValidSelection(): boolean {
 		return (
 			this.selectedIndex !== null &&
 			this.parsed.entries[this.selectedIndex]?.type === "song"
 		);
 	}
 
-	private removeSelectedSong(): void {
+	removeSelectedSong(): void {
 		if (!this.hasValidSelection() || this.selectedIndex === null) return;
 		void this.persist(removeSong(this.parsed, this.selectedIndex));
 		this.selectedIndex = null;
 	}
 
-	private getSelectedFile(): TFile | null {
+	getSelectedFile(): TFile | null {
 		if (!this.hasValidSelection() || this.selectedIndex === null) return null;
 		const entry = this.parsed.entries[this.selectedIndex];
 		return entry.type === "song" ? entry.file : null;
 	}
 
-	private openSelectedSongAsNewTab(): void {
+	openSelectedSongAsNewTab(): void {
 		const file = this.getSelectedFile();
 		if (!file) return;
 		void this.app.workspace.getLeaf("tab").openFile(file);
 	}
 
-	private getBandName(): string | null {
+	getBandName(): string | null {
 		return this.file ? readBandName(this.app.metadataCache.getFileCache(this.file)) : null;
 	}
 
@@ -287,7 +290,7 @@ export class SetListEditView extends BaseSetListView {
 		return tag.length > 0 ? tag : null;
 	}
 
-	private openSongPicker(replaceIndex?: number): void {
+	openSongPicker(replaceIndex?: number): void {
 		if (!this.file) return;
 		const sourcePath = this.file.path;
 		const includedPaths = new Set(
@@ -305,7 +308,7 @@ export class SetListEditView extends BaseSetListView {
 		}).open();
 	}
 
-	private replaceSelectedSong(): void {
+	replaceSelectedSong(): void {
 		if (!this.hasValidSelection() || this.selectedIndex === null) return;
 		this.openSongPicker(this.selectedIndex);
 	}
@@ -326,7 +329,7 @@ export class SetListEditView extends BaseSetListView {
 		await persistSetList(this.app, this.file, parsed);
 	}
 
-	private enterStageView(): void {
+	enterStageView(): void {
 		if (!this.file) return;
 		const index = this.hasValidSelection() ? this.selectedIndex! : findFirstSongIndex(this.parsed) ?? 0;
 		void this.leaf.setViewState({
@@ -335,7 +338,7 @@ export class SetListEditView extends BaseSetListView {
 		});
 	}
 
-	private tagAllSongsWithBand(band: string): void {
+	tagAllSongsWithBand(band: string): void {
 		const tag = sanitizeTag(band);
 		if (!tag) return;
 		void addTagToAllSongs(this.app, this.parsed, tag);
