@@ -41,7 +41,7 @@ Available whenever the active note/view is a SetList (name/status varies slightl
 
 The toolbar is grouped into song actions (left) and set-list-level actions (right):
 
-- **Add song** — pick any markdown or PDF file in the vault to append to the set list. Songs already in the set list are shown dimmed in the picker (but can still be picked again, e.g. for an encore). If the set list has a `band` property, a toggle — on by default — filters the picker to songs already tagged with it.
+- **Add song** — pick any markdown or PDF file in the vault (other set lists are excluded) to append to the set list. Pressing Enter or clicking a result adds it and keeps the picker open, cleared and ready for the next one, so you can add several songs in quick succession; close the picker when done. Songs already in the set list are shown dimmed (but can still be picked again, e.g. for an encore). If the set list has a `band` property, a toggle — on by default — filters the picker to songs already tagged with it.
 - **Replace selected song** — swap the selected song for a different one, in place, via the same picker.
 - **Remove selected song** — remove the selected song from the list.
 - **Enter stage view** — jumps into Stage view starting at the selected song (or the first song if none is selected).
