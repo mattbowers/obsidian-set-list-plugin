@@ -51,6 +51,10 @@ export class SetListEditView extends BaseSetListView {
 
 	protected render(): void {
 		const container = this.contentEl;
+		// render() rebuilds the whole DOM tree from scratch (e.g. on every row click, to
+		// update selection/button state), which would otherwise reset scroll to the top each
+		// time — restore it once the new content is in place.
+		const previousScrollTop = container.querySelector<HTMLElement>(".set-list-scroll")?.scrollTop ?? 0;
 		container.empty();
 		container.addClass("set-list-edit-view");
 		renderBuildBadge(container, this.plugin);
@@ -109,6 +113,8 @@ export class SetListEditView extends BaseSetListView {
 				textRow.dataset.entryIndex = String(index);
 			}
 		});
+
+		scroll.scrollTop = previousScrollTop;
 	}
 
 	private renderSongRow(list: HTMLElement, entry: SongEntry, index: number, songNumber: number): void {
