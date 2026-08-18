@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CachedMetadata, LinkCache, TFile } from "obsidian";
-import { isSetListFile, parseSetList } from "../setlist/parser";
+import { getBandName, isSetListFile, parseSetList } from "../setlist/parser";
 
 function link(linkText: string, line: number, displayText?: string): LinkCache {
 	return {
@@ -41,6 +41,22 @@ describe("isSetListFile", () => {
 
 	it("returns false for a non-string type value instead of throwing", () => {
 		expect(isSetListFile({ frontmatter: { type: 42 } } as unknown as CachedMetadata)).toBe(false);
+	});
+});
+
+describe("getBandName", () => {
+	it("returns the trimmed band frontmatter value", () => {
+		expect(getBandName({ frontmatter: { band: " The Rolling Stones " } } as CachedMetadata)).toBe(
+			"The Rolling Stones"
+		);
+	});
+
+	it("returns null for missing, empty, or non-string band values", () => {
+		expect(getBandName({} as CachedMetadata)).toBeNull();
+		expect(getBandName({ frontmatter: { band: "" } } as CachedMetadata)).toBeNull();
+		expect(getBandName({ frontmatter: { band: "   " } } as CachedMetadata)).toBeNull();
+		expect(getBandName({ frontmatter: { band: 42 } } as unknown as CachedMetadata)).toBeNull();
+		expect(getBandName(null)).toBeNull();
 	});
 });
 

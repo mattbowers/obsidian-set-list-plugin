@@ -13,6 +13,14 @@
 	background-color: var(--background-primary);
 }
 
+/* Pushed to the toolbar's far edge, separate from the selected-song actions, so its
+   grouping signals these act on the set list itself rather than a song. */
+.set-list-toolbar-group-right {
+	display: flex;
+	gap: var(--size-4-2);
+	margin-left: auto;
+}
+
 /* Touch-sized for on-stage use: the icon glyph itself is 4x Obsidian's default 16px
    clickable-icon size (64px); the button is sized to fit it plus a comfortable tap margin. */
 .set-list-toolbar .clickable-icon {
@@ -207,6 +215,11 @@
 
 .set-list-song-picker-included {
 	color: var(--text-faint);
+}
+
+.set-list-song-picker-filter {
+	border: none;
+	padding: var(--size-4-2) var(--size-4-4);
 }
 
 .set-list-build-badge {

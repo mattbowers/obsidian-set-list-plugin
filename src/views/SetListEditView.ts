@@ -4,6 +4,8 @@ import { SongPickerModal } from "../ui/SongPickerModal";
 import { addSong, removeSong, replaceSong, reorder } from "../setlist/mutations";
 import { persistSetList } from "../setlist/persist";
 import { findFirstSongIndex } from "../setlist/navigation";
+import { getBandName as readBandName } from "../setlist/parser";
+import { addTagToAllSongs, sanitizeTag } from "../setlist/tagging";
 import { renderBuildBadge } from "../ui/buildBadge";
 import { MARKDOWN_VIEW_TYPE, SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./viewTypes";
 import type { ParsedSetList, SongEntry } from "../setlist/types";
@@ -91,7 +93,16 @@ export class SetListEditView extends BaseSetListView {
 			undefined,
 			!this.getSelectedFile()
 		);
-		this.createIconButton(toolbar, "code", "Source mode", () => this.openAsSourceMode());
+		// Set-list-level actions (as opposed to the selected-song actions above) sit on the
+		// right, so their grouping signals they act on the set list itself, not a song.
+		const toolbarRight = toolbar.createDiv({ cls: "set-list-toolbar-group-right" });
+		const bandName = this.getBandName();
+		if (bandName) {
+			this.createIconButton(toolbarRight, "tag", `Tag all songs with "${bandName}"`, () =>
+				this.tagAllSongsWithBand(bandName)
+			);
+		}
+		this.createIconButton(toolbarRight, "code", "Source mode", () => this.openAsSourceMode());
 
 		const list = scroll.createDiv({ cls: "set-list-rows" });
 		list.addEventListener("dragover", (evt) => {
@@ -265,6 +276,17 @@ export class SetListEditView extends BaseSetListView {
 		void this.app.workspace.getLeaf("tab").openFile(file);
 	}
 
+	private getBandName(): string | null {
+		return this.file ? readBandName(this.app.metadataCache.getFileCache(this.file)) : null;
+	}
+
+	private getBandTag(): string | null {
+		const band = this.getBandName();
+		if (!band) return null;
+		const tag = sanitizeTag(band);
+		return tag.length > 0 ? tag : null;
+	}
+
 	private openSongPicker(replaceIndex?: number): void {
 		if (!this.file) return;
 		const sourcePath = this.file.path;
@@ -273,7 +295,7 @@ export class SetListEditView extends BaseSetListView {
 				.filter((entry): entry is SongEntry => entry.type === "song" && entry.file !== null)
 				.map((entry) => entry.file!.path)
 		);
-		new SongPickerModal(this.app, includedPaths, (file) => {
+		new SongPickerModal(this.app, includedPaths, this.getBandTag(), (file) => {
 			const entry = this.createSongEntry(file, sourcePath);
 			if (replaceIndex !== undefined) {
 				void this.persist(replaceSong(this.parsed, replaceIndex, entry));
@@ -311,6 +333,12 @@ export class SetListEditView extends BaseSetListView {
 			type: SET_LIST_STAGE_VIEW_TYPE,
 			state: { file: this.file.path, index },
 		});
+	}
+
+	private tagAllSongsWithBand(band: string): void {
+		const tag = sanitizeTag(band);
+		if (!tag) return;
+		void addTagToAllSongs(this.app, this.parsed, tag);
 	}
 
 	private openAsSourceMode(): void {

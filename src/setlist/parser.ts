@@ -11,6 +11,13 @@ export function isSetListFile(cache: CachedMetadata | null): boolean {
 	return type.trim().toLowerCase() === SET_LIST_FRONTMATTER_TYPE.toLowerCase();
 }
 
+export function getBandName(cache: CachedMetadata | null): string | null {
+	const band = cache?.frontmatter?.band;
+	if (typeof band !== "string") return null;
+	const trimmed = band.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
 export function parseSetList(
 	content: string,
 	cache: CachedMetadata | null,
