@@ -39,6 +39,8 @@ Available whenever the active note/view is a SetList (name/status varies slightl
 
 ## Edit view
 
+A header above the toolbar buttons shows the song count (e.g. "13 songs"), and the set list's `band` property before it when present (e.g. "The Wow Band · 13 songs").
+
 The toolbar is grouped into song actions (left) and set-list-level actions (right):
 
 - **Add song** — pick any markdown or PDF file in the vault (other set lists are excluded) to append to the set list. Pressing Enter or clicking a result adds it and keeps the picker open, cleared and ready for the next one, so you can add several songs in quick succession; close the picker when done. Songs already in the set list are shown dimmed (but can still be picked again, e.g. for an encore). If the set list has a `band` property, a toggle — on by default — filters the picker to songs already tagged with it.
@@ -49,6 +51,8 @@ The toolbar is grouped into song actions (left) and set-list-level actions (righ
 - **Paste songs from clipboard** — reads the clipboard as plain text and treats each non-blank line as a song to add: a line that matches a vault file's name (exact match preferred, otherwise the best fuzzy match) becomes a proper song row; a line that matches nothing is still added, as plain text, so it stays visible to fix up by hand rather than being silently dropped.
 - **Tag all songs with band** *(only if the set list has a `band` property)* — adds a tag for it to every song's frontmatter, skipping any song that already has it.
 - **Source mode** — drops back to the raw markdown note in Source Mode, e.g. to edit frontmatter or troubleshoot. Since the note stays in Source Mode, it won't auto-switch back to Edit view next time it's opened; use the command or reopen it in Live Preview/Reading view to get Edit view back.
+
+If a song has `artist`, `key`, and/or `tempo` in its own frontmatter, they're shown as a smaller, dimmer line under its title in the row (whichever of the three are present; `tempo` gets a "BPM" suffix, unless it already has one).
 
 Other interactions:
 

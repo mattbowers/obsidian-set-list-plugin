@@ -68,9 +68,18 @@ export class SetListEditView extends BaseSetListView {
 		const scroll = container.createDiv({ cls: "set-list-scroll" });
 
 		const toolbar = scroll.createDiv({ cls: "set-list-toolbar" });
-		this.createIconButton(toolbar, "plus", "Add song", () => this.openSongPicker());
+		const bandName = this.getBandName();
+		const songCount = this.parsed.entries.filter((entry) => entry.type === "song").length;
+		const songCountText = songCount === 1 ? "1 song" : `${songCount} songs`;
+		toolbar.createDiv({
+			cls: "set-list-toolbar-header",
+			text: bandName ? `${bandName} · ${songCountText}` : songCountText,
+		});
+
+		const toolbarButtons = toolbar.createDiv({ cls: "set-list-toolbar-buttons" });
+		this.createIconButton(toolbarButtons, "plus", "Add song", () => this.openSongPicker());
 		this.createIconButton(
-			toolbar,
+			toolbarButtons,
 			"replace",
 			"Replace selected song",
 			() => this.replaceSelectedSong(),
@@ -78,16 +87,16 @@ export class SetListEditView extends BaseSetListView {
 			!this.hasValidSelection()
 		);
 		this.createIconButton(
-			toolbar,
+			toolbarButtons,
 			"trash-2",
 			"Remove selected song",
 			() => this.removeSelectedSong(),
 			undefined,
 			!this.hasValidSelection()
 		);
-		this.createIconButton(toolbar, "presentation", "Enter stage view", () => this.enterStageView());
+		this.createIconButton(toolbarButtons, "presentation", "Enter stage view", () => this.enterStageView());
 		this.createIconButton(
-			toolbar,
+			toolbarButtons,
 			"external-link",
 			"Open song as new tab",
 			() => this.openSelectedSongAsNewTab(),
@@ -96,11 +105,10 @@ export class SetListEditView extends BaseSetListView {
 		);
 		// Set-list-level actions (as opposed to the selected-song actions above) sit on the
 		// right, so their grouping signals they act on the set list itself, not a song.
-		const toolbarRight = toolbar.createDiv({ cls: "set-list-toolbar-group-right" });
+		const toolbarRight = toolbarButtons.createDiv({ cls: "set-list-toolbar-group-right" });
 		this.createIconButton(toolbarRight, "clipboard-paste", "Paste songs from clipboard", () =>
 			void this.pasteSongsFromClipboard()
 		);
-		const bandName = this.getBandName();
 		if (bandName) {
 			this.createIconButton(toolbarRight, "tag", `Tag all songs with "${bandName}"`, () =>
 				this.tagAllSongsWithBand(bandName)
@@ -144,7 +152,13 @@ export class SetListEditView extends BaseSetListView {
 		}
 
 		row.createSpan({ cls: "set-list-row-number", text: String(songNumber).padStart(2, "0") });
-		row.createSpan({ cls: "set-list-row-label", text: entry.displayText });
+
+		const titleGroup = row.createDiv({ cls: "set-list-row-title-group" });
+		titleGroup.createSpan({ cls: "set-list-row-label", text: entry.displayText });
+		const metadataLine = entry.file ? this.getSongMetadataLine(entry.file) : null;
+		if (metadataLine) {
+			titleGroup.createSpan({ cls: "set-list-row-metadata", text: metadataLine });
+		}
 
 		row.addEventListener("click", () => {
 			this.selectedIndex = index;
@@ -292,6 +306,36 @@ export class SetListEditView extends BaseSetListView {
 		if (!band) return null;
 		const tag = sanitizeTag(band);
 		return tag.length > 0 ? tag : null;
+	}
+
+	/** artist/key/tempo from the song file's own frontmatter (not the set list's), joined for
+	 *  display under its row title. Any subset may be present; absent ones are just skipped. */
+	private getSongMetadataLine(file: TFile): string | null {
+		const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+		if (!frontmatter) return null;
+
+		const parts = [
+			this.stringifyMetadataValue(frontmatter.artist),
+			this.stringifyMetadataValue(frontmatter.key),
+			this.formatTempo(frontmatter.tempo),
+		].filter((value): value is string => value !== null);
+
+		return parts.length > 0 ? parts.join(" · ") : null;
+	}
+
+	private formatTempo(value: unknown): string | null {
+		const tempo = this.stringifyMetadataValue(value);
+		if (!tempo) return null;
+		return /\bbpm\b/i.test(tempo) ? tempo : `${tempo} BPM`;
+	}
+
+	private stringifyMetadataValue(value: unknown): string | null {
+		if (typeof value === "string") {
+			const trimmed = value.trim();
+			return trimmed.length > 0 ? trimmed : null;
+		}
+		if (typeof value === "number") return String(value);
+		return null;
 	}
 
 	openSongPicker(replaceIndex?: number): void {

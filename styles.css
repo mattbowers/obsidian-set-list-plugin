@@ -5,12 +5,27 @@
 
 .set-list-toolbar {
 	display: flex;
-	gap: var(--size-4-2);
+	flex-direction: column;
+	gap: var(--size-4-1);
 	padding: var(--size-4-4) var(--size-4-4) var(--size-4-2);
 	position: sticky;
 	top: 0;
 	z-index: 3;
 	background-color: var(--background-primary);
+}
+
+/* Song count, and the set list's own band (from its frontmatter) when present — shown above
+   the toolbar buttons. */
+.set-list-toolbar-header {
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+	text-align: right;
+}
+
+.set-list-toolbar-buttons {
+	display: flex;
+	gap: var(--size-4-2);
 }
 
 /* Pushed to the toolbar's far edge, separate from the selected-song actions, so its
@@ -66,9 +81,18 @@
 	flex-shrink: 0;
 }
 
-.set-list-row-label {
+.set-list-row-title-group {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
 	flex: 1;
 	min-width: 0;
+}
+
+.set-list-row-metadata {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-normal);
+	color: var(--text-faint);
 }
 
 .set-list-row-song.set-list-row-dragging {
