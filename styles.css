@@ -121,6 +121,48 @@
 	   longPressDuration, so the fill always matches exactly how long a long press takes. */
 }
 
+.set-list-swipe-indicator {
+	position: absolute;
+	/* Grows to 360px at full progress: 10px base * scale(36), matching the long-press ring. */
+	width: 10px;
+	height: 10px;
+	margin: -5px 0 0 -5px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	border: 1px solid var(--interactive-accent);
+	background-color: var(--background-primary);
+	pointer-events: none;
+	opacity: 0;
+	--set-list-swipe-progress: 0;
+	/* No transition: this tracks the finger 1:1 on every pointermove, driven entirely by JS
+	   updates to --set-list-swipe-progress rather than a time-based animation. */
+}
+
+.set-list-swipe-indicator svg {
+	/* Scales up together with the ring itself, since both are inside the same transformed
+	   element — sized here relative to the 10px unscaled ring, not the final 360px. */
+	width: 5.6px;
+	height: 5.6px;
+	color: var(--interactive-accent);
+}
+
+.set-list-swipe-indicator.is-active {
+	opacity: calc(0.3 + var(--set-list-swipe-progress) * 0.6);
+	transform: scale(calc(1 + var(--set-list-swipe-progress) * 35));
+}
+
+/* Full brightness right as the drag crosses StageGestureController's own swipe threshold —
+   releasing now is guaranteed to trigger it. */
+.set-list-swipe-indicator.is-armed {
+	background-color: var(--interactive-accent);
+}
+
+.set-list-swipe-indicator.is-armed svg {
+	color: var(--text-on-accent);
+}
+
 .set-list-song-container {
 	padding: var(--size-4-4);
 }

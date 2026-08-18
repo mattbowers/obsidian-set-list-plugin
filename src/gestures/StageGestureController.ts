@@ -55,6 +55,16 @@ export class StageGestureController {
 		return this.options.longPressMaxMovement;
 	}
 
+	/** Exposed so callers can size live swipe-progress feedback against the same threshold. */
+	get swipeMinDistance(): number {
+		return this.options.swipeMinDistance;
+	}
+
+	/** Exposed so callers can cancel live swipe-progress feedback once it rules out a swipe. */
+	get swipeMaxVerticalRatio(): number {
+		return this.options.swipeMaxVerticalRatio;
+	}
+
 	onPointerDown(sample: PointerSample): void {
 		this.start = sample;
 		this.last = sample;
