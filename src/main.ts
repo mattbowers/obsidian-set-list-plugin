@@ -1,5 +1,5 @@
-import { MarkdownView, Plugin, TFile } from "obsidian";
-import { isSetListFile } from "./setlist/parser";
+import { MarkdownView, normalizePath, Plugin, TFile } from "obsidian";
+import { isSetListFile, SET_LIST_FRONTMATTER_TYPE } from "./setlist/parser";
 import { SetListEditView } from "./views/SetListEditView";
 import { SetListStageView } from "./views/SetListStageView";
 import { SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./views/viewTypes";
@@ -21,6 +21,8 @@ export default class SetListPlugin extends Plugin {
 
 		this.addSwitchViewCommand("switch-to-edit-view", "Switch to edit view", SET_LIST_EDIT_VIEW_TYPE);
 		this.addSwitchViewCommand("switch-to-stage-view", "Switch to stage view", SET_LIST_STAGE_VIEW_TYPE);
+
+		this.addRibbonIcon("list-plus", "New set list", () => void this.createNewSetList());
 
 		this.uninstallSwipeGuard = installSidebarSwipeGuard(
 			this.app,
@@ -90,6 +92,31 @@ export default class SetListPlugin extends Plugin {
 			window.requestAnimationFrame(() => void this.maybeOpenEditView(file, attempt + 1));
 		} else {
 			console.warn("[SetList] file-open: gave up switching to edit view", file.path);
+		}
+	}
+
+	/** Mirrors where Obsidian's own "New note" places a file — respects the user's "New file
+	 *  location" setting, including the currently selected/active folder where applicable. */
+	private async createNewSetList(): Promise<void> {
+		const activeFile = this.app.workspace.getActiveFile();
+		const parent = this.app.fileManager.getNewFileParent(activeFile?.path ?? "");
+		const path = this.getAvailableSetListPath(parent.path);
+		const file = await this.app.vault.create(path, `---\ntype: ${SET_LIST_FRONTMATTER_TYPE}\n---\n`);
+
+		const leaf = this.app.workspace.getLeaf("tab");
+		await leaf.setViewState({
+			type: SET_LIST_EDIT_VIEW_TYPE,
+			state: { file: file.path },
+		});
+		this.app.workspace.setActiveLeaf(leaf, { focus: true });
+	}
+
+	private getAvailableSetListPath(folderPath: string): string {
+		const base = "New Set List";
+		for (let n = 0; ; n++) {
+			const name = n === 0 ? `${base}.md` : `${base} ${n}.md`;
+			const path = normalizePath(folderPath ? `${folderPath}/${name}` : name);
+			if (!this.app.vault.getAbstractFileByPath(path)) return path;
 		}
 	}
 

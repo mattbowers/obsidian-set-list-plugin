@@ -21,7 +21,7 @@ Each build bakes a `__BUILD_TIME__` timestamp (via esbuild `define`) into the bu
 
 ## Architecture
 
-- `src/main.ts` — plugin entry: registers the two views, the two switch-view commands (gated by `isSetListFile`), and installs `sidebarSwipeGuard`.
+- `src/main.ts` — plugin entry: registers the two views, the two switch-view commands (gated by `isSetListFile`), a "New set list" ribbon icon (creates a note with `type: SetList` frontmatter via `FileManager.getNewFileParent` — the same folder-placement logic Obsidian's own "New note" uses — and opens it directly in Edit view), and installs `sidebarSwipeGuard`.
 - `src/setlist/` — pure data model, no Obsidian view/UI code:
   - `types.ts` — `SongEntry` / `TextEntry` / `SetListEntry` union, `ParsedSetList { preamble, entries }`.
   - `parser.ts` — `isSetListFile` (frontmatter `type: SetList`, case/whitespace-tolerant), `getBandName` (trimmed `band` frontmatter value, or `null`), `parseSetList` (splits frontmatter as an untouched preamble, classifies each body line as song/text by cross-referencing `CachedMetadata.links[].position.start.line`, resolves links via an injected callback).
