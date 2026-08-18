@@ -177,6 +177,8 @@ export class SetListEditView extends BaseSetListView {
 		if (fromIndex < toIndex) toIndex -= 1;
 		if (toIndex === fromIndex) return;
 
+		// Select the dragged song at its new position, so it's obvious where it landed.
+		this.selectedIndex = toIndex;
 		void this.persist(reorder(this.parsed, fromIndex, toIndex));
 	}
 
