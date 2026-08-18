@@ -1,7 +1,7 @@
 import { setIcon, setTooltip, TFile } from "obsidian";
 import { BaseSetListView } from "./BaseSetListView";
 import { SongPickerModal } from "../ui/SongPickerModal";
-import { addSong, removeSong, reorder } from "../setlist/mutations";
+import { addSong, removeSong, replaceSong, reorder } from "../setlist/mutations";
 import { persistSetList } from "../setlist/persist";
 import { findFirstSongIndex } from "../setlist/navigation";
 import { renderBuildBadge } from "../ui/buildBadge";
@@ -41,6 +41,22 @@ export class SetListEditView extends BaseSetListView {
 
 		const toolbar = container.createDiv({ cls: "set-list-toolbar" });
 		this.createIconButton(toolbar, "plus", "Add song", () => this.openSongPicker());
+		this.createIconButton(
+			toolbar,
+			"replace",
+			"Replace selected song",
+			() => this.replaceSelectedSong(),
+			undefined,
+			!this.hasValidSelection()
+		);
+		this.createIconButton(
+			toolbar,
+			"trash-2",
+			"Remove selected song",
+			() => this.removeSelectedSong(),
+			undefined,
+			!this.hasValidSelection()
+		);
 		this.createIconButton(toolbar, "presentation", "Enter stage view", () => this.enterStageView());
 		this.createIconButton(toolbar, "code", "Source mode", () => this.openAsSourceMode());
 
@@ -79,10 +95,6 @@ export class SetListEditView extends BaseSetListView {
 
 		row.createSpan({ cls: "set-list-row-number", text: String(songNumber).padStart(2, "0") });
 		row.createSpan({ cls: "set-list-row-label", text: entry.displayText });
-		this.createIconButton(row, "trash-2", "Remove", (evt) => {
-			evt.stopPropagation();
-			void this.persist(removeSong(this.parsed, index));
-		}, "set-list-row-remove");
 
 		row.addEventListener("click", () => {
 			this.selectedIndex = index;
@@ -174,21 +186,46 @@ export class SetListEditView extends BaseSetListView {
 		icon: string,
 		tooltip: string,
 		onClick: (evt: MouseEvent) => void,
-		extraCls?: string
+		extraCls?: string,
+		disabled = false
 	): HTMLButtonElement {
 		const button = parent.createEl("button", { cls: extraCls ? `clickable-icon ${extraCls}` : "clickable-icon" });
 		setIcon(button, icon);
 		setTooltip(button, tooltip);
+		button.disabled = disabled;
 		button.addEventListener("click", onClick);
 		return button;
 	}
 
-	private openSongPicker(): void {
+	private hasValidSelection(): boolean {
+		return (
+			this.selectedIndex !== null &&
+			this.parsed.entries[this.selectedIndex]?.type === "song"
+		);
+	}
+
+	private removeSelectedSong(): void {
+		if (!this.hasValidSelection() || this.selectedIndex === null) return;
+		void this.persist(removeSong(this.parsed, this.selectedIndex));
+		this.selectedIndex = null;
+	}
+
+	private openSongPicker(replaceIndex?: number): void {
 		if (!this.file) return;
 		const sourcePath = this.file.path;
 		new SongPickerModal(this.app, (file) => {
-			void this.persist(addSong(this.parsed, this.createSongEntry(file, sourcePath)));
+			const entry = this.createSongEntry(file, sourcePath);
+			if (replaceIndex !== undefined) {
+				void this.persist(replaceSong(this.parsed, replaceIndex, entry));
+			} else {
+				void this.persist(addSong(this.parsed, entry));
+			}
 		}).open();
+	}
+
+	private replaceSelectedSong(): void {
+		if (!this.hasValidSelection() || this.selectedIndex === null) return;
+		this.openSongPicker(this.selectedIndex);
 	}
 
 	private createSongEntry(file: TFile, sourcePath: string): SongEntry {
@@ -209,7 +246,7 @@ export class SetListEditView extends BaseSetListView {
 
 	private enterStageView(): void {
 		if (!this.file) return;
-		const index = this.selectedIndex ?? findFirstSongIndex(this.parsed) ?? 0;
+		const index = this.hasValidSelection() ? this.selectedIndex! : findFirstSongIndex(this.parsed) ?? 0;
 		void this.leaf.setViewState({
 			type: SET_LIST_STAGE_VIEW_TYPE,
 			state: { file: this.file.path, index },

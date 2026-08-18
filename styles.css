@@ -47,10 +47,6 @@
 	outline: 2px solid var(--interactive-accent);
 }
 
-.set-list-row-remove {
-	flex-shrink: 0;
-}
-
 .set-list-row-song.set-list-row-unresolved {
 	color: var(--text-error);
 	font-style: italic;

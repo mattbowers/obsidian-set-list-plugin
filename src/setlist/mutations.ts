@@ -12,6 +12,12 @@ export function removeSong(parsed: ParsedSetList, index: number): ParsedSetList 
 	return { ...parsed, entries };
 }
 
+export function replaceSong(parsed: ParsedSetList, index: number, entry: SongEntry): ParsedSetList {
+	const entries = [...parsed.entries];
+	entries.splice(index, 1, entry);
+	return { ...parsed, entries };
+}
+
 export function reorder(parsed: ParsedSetList, fromIndex: number, toIndex: number): ParsedSetList {
 	const entries = [...parsed.entries];
 	const [moved] = entries.splice(fromIndex, 1);
