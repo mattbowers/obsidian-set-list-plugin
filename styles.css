@@ -147,6 +147,8 @@
 	width: 11.2px;
 	height: 11.2px;
 	margin: 0;
+	/* Small optical nudge down — the chevron glyph reads slightly high otherwise. */
+	transform: translateY(0.5px);
 	color: var(--interactive-accent);
 }
 
