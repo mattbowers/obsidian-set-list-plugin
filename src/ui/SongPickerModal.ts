@@ -1,4 +1,5 @@
 import { App, FuzzyMatch, FuzzySuggestModal, Setting, TFile, getAllTags } from "obsidian";
+import { isSetListFile } from "../setlist/parser";
 
 export class SongPickerModal extends FuzzySuggestModal<TFile> {
 	private readonly includedPaths: ReadonlySet<string>;
@@ -37,7 +38,10 @@ export class SongPickerModal extends FuzzySuggestModal<TFile> {
 	}
 
 	getItems(): TFile[] {
-		const files = this.app.vault.getFiles().filter((file) => file.extension === "md" || file.extension === "pdf");
+		const files = this.app.vault
+			.getFiles()
+			.filter((file) => file.extension === "md" || file.extension === "pdf")
+			.filter((file) => !isSetListFile(this.app.metadataCache.getFileCache(file)));
 		if (!this.filterByBand || !this.bandTag) return files;
 
 		const wanted = `#${this.bandTag}`.toLowerCase();
