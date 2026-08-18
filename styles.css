@@ -143,8 +143,10 @@
 .set-list-swipe-indicator svg {
 	/* Scales up together with the ring itself, since both are inside the same transformed
 	   element — sized here relative to the 10px unscaled ring, not the final 360px. */
-	width: 5.6px;
-	height: 5.6px;
+	display: block;
+	width: 11.2px;
+	height: 11.2px;
+	margin: 0;
 	color: var(--interactive-accent);
 }
 
