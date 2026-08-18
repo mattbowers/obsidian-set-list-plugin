@@ -63,6 +63,14 @@ export class SetListEditView extends BaseSetListView {
 			!this.hasValidSelection()
 		);
 		this.createIconButton(toolbar, "presentation", "Enter stage view", () => this.enterStageView());
+		this.createIconButton(
+			toolbar,
+			"external-link",
+			"Open song as new tab",
+			() => this.openSelectedSongAsNewTab(),
+			undefined,
+			!this.getSelectedFile()
+		);
 		this.createIconButton(toolbar, "code", "Source mode", () => this.openAsSourceMode());
 
 		const list = scroll.createDiv({ cls: "set-list-rows" });
@@ -213,6 +221,18 @@ export class SetListEditView extends BaseSetListView {
 		if (!this.hasValidSelection() || this.selectedIndex === null) return;
 		void this.persist(removeSong(this.parsed, this.selectedIndex));
 		this.selectedIndex = null;
+	}
+
+	private getSelectedFile(): TFile | null {
+		if (!this.hasValidSelection() || this.selectedIndex === null) return null;
+		const entry = this.parsed.entries[this.selectedIndex];
+		return entry.type === "song" ? entry.file : null;
+	}
+
+	private openSelectedSongAsNewTab(): void {
+		const file = this.getSelectedFile();
+		if (!file) return;
+		void this.app.workspace.getLeaf("tab").openFile(file);
 	}
 
 	private openSongPicker(replaceIndex?: number): void {
