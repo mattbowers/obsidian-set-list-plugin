@@ -13,6 +13,19 @@
 	background-color: var(--background-primary);
 }
 
+/* Touch-sized for on-stage use: the icon glyph itself is 4x Obsidian's default 16px
+   clickable-icon size (64px); the button is sized to fit it plus a comfortable tap margin. */
+.set-list-toolbar .clickable-icon {
+	width: 76px;
+	height: 76px;
+	padding: 6px;
+}
+
+.set-list-toolbar .clickable-icon svg {
+	width: 64px;
+	height: 64px;
+}
+
 .set-list-rows {
 	display: flex;
 	flex-direction: column;
@@ -31,6 +44,9 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--size-4-2);
+	/* Touch-sized for on-stage use: ~2x a default (untouched) row's ~32px natural height,
+	   with the row's own flex centering handling the rest regardless of exact content height. */
+	min-height: 64px;
 	background-color: var(--background-secondary);
 	font-weight: var(--font-medium);
 	cursor: grab;

@@ -136,6 +136,12 @@ export class SetListEditView extends BaseSetListView {
 			this.render();
 		});
 
+		// Double-tap/double-click a song to jump straight into performing it.
+		row.addEventListener("dblclick", () => {
+			this.selectedIndex = index;
+			this.enterStageView();
+		});
+
 		row.addEventListener("dragstart", (evt) => {
 			evt.dataTransfer?.setData("text/plain", String(index));
 			row.addClass("set-list-row-dragging");
