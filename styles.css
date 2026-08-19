@@ -136,6 +136,14 @@
 .set-list-stage-view {
 	height: 100%;
 	overflow-y: auto;
+	/* A real note's reading view cancels Obsidian's default .view-content padding and manages
+	   its own margins instead (via .markdown-reading-view/.markdown-preview-view CSS, which
+	   already applies here too — see the design note on .set-list-song-container below).
+	   A plain override isn't enough to cancel it here (confirmed via devtools: still a
+	   12/12/12/32px .view-content padding with padding: 0 in place) — on mobile, Obsidian
+	   reserves that left-side space for its floating sidebar-toggle button, applied with
+	   enough specificity/priority that only !important reliably wins. */
+	padding: 0 !important;
 }
 
 .set-list-stage-content {
@@ -229,10 +237,6 @@
 
 .set-list-swipe-indicator.is-armed svg {
 	color: var(--text-on-accent);
-}
-
-.set-list-song-container {
-	padding: var(--size-4-4);
 }
 
 .set-list-song-missing {
