@@ -18,6 +18,12 @@ interface DragRow {
 }
 
 export class SetListEditView extends BaseSetListView {
+	// Defaults to locked: safe/read-only until explicitly unlocked, so a stray tap mid-performance
+	// can't reorder or delete a song. Stage view, Direct open song, and Open song as new tab stay
+	// available while locked (see hasValidSelection-style guards below) — everything else that
+	// writes to the note or a song file is blocked, both at the toolbar/method level here and via
+	// isLocked() in main.ts's matching command checkCallbacks.
+	private locked = true;
 	private selectedIndex: number | null = null;
 	private dragFromIndex: number | null = null;
 	private dragFromEl: HTMLElement | null = null;
@@ -67,7 +73,9 @@ export class SetListEditView extends BaseSetListView {
 		// zero-padding ancestor to stick flush against, with no gap the list peeks through.
 		const scroll = container.createDiv({ cls: "set-list-scroll" });
 
-		const toolbar = scroll.createDiv({ cls: "set-list-toolbar" });
+		const toolbar = scroll.createDiv({
+			cls: this.locked ? "set-list-toolbar" : "set-list-toolbar is-unlocked",
+		});
 		const bandName = this.getBandName();
 		const songCount = this.parsed.entries.filter((entry) => entry.type === "song").length;
 		const songCountText = songCount === 1 ? "1 song" : `${songCount} songs`;
@@ -77,14 +85,21 @@ export class SetListEditView extends BaseSetListView {
 		});
 
 		const toolbarButtons = toolbar.createDiv({ cls: "set-list-toolbar-buttons" });
-		this.createIconButton(toolbarButtons, "plus", "Add song", () => this.openSongPicker());
+		this.createIconButton(
+			toolbarButtons,
+			this.locked ? "lock" : "unlock",
+			this.locked ? "Unlock editing" : "Lock editing",
+			() => this.toggleLock(),
+			"set-list-lock-button"
+		);
+		this.createIconButton(toolbarButtons, "plus", "Add song", () => this.openSongPicker(), undefined, this.locked);
 		this.createIconButton(
 			toolbarButtons,
 			"replace",
 			"Replace selected song",
 			() => this.replaceSelectedSong(),
 			undefined,
-			!this.hasValidSelection()
+			this.locked || !this.hasValidSelection()
 		);
 		this.createIconButton(
 			toolbarButtons,
@@ -92,7 +107,7 @@ export class SetListEditView extends BaseSetListView {
 			"Remove selected song",
 			() => this.removeSelectedSong(),
 			undefined,
-			!this.hasValidSelection()
+			this.locked || !this.hasValidSelection()
 		);
 		this.createIconButton(toolbarButtons, "presentation", "Enter stage view", () => this.enterStageView());
 		this.createIconButton(toolbarButtons, "play", "Direct open song", () => this.openDirectSongPicker());
@@ -110,19 +125,41 @@ export class SetListEditView extends BaseSetListView {
 		// Off-stage, desktop-oriented actions (bulk clipboard import/export, tagging by band) —
 		// hidden on mobile, where Stage view is the point and these just add clutter.
 		if (Platform.isDesktop) {
-			this.createIconButton(toolbarRight, "clipboard-paste", "Paste songs from clipboard", () =>
-				void this.pasteSongsFromClipboard()
+			this.createIconButton(
+				toolbarRight,
+				"clipboard-paste",
+				"Paste songs from clipboard",
+				() => void this.pasteSongsFromClipboard(),
+				undefined,
+				this.locked
 			);
-			this.createIconButton(toolbarRight, "copy", "Copy to clipboard", () =>
-				void this.copyToClipboard()
+			this.createIconButton(
+				toolbarRight,
+				"copy",
+				"Copy to clipboard",
+				() => void this.copyToClipboard(),
+				undefined,
+				this.locked
 			);
 			if (bandName) {
-				this.createIconButton(toolbarRight, "tag", `Tag all songs with "${bandName}"`, () =>
-					this.tagAllSongsWithBand(bandName)
+				this.createIconButton(
+					toolbarRight,
+					"tag",
+					`Tag all songs with "${bandName}"`,
+					() => this.tagAllSongsWithBand(bandName),
+					undefined,
+					this.locked
 				);
 			}
 		}
-		this.createIconButton(toolbarRight, "code", "Source mode", () => this.openAsSourceMode());
+		this.createIconButton(
+			toolbarRight,
+			"code",
+			"Source mode",
+			() => this.openAsSourceMode(),
+			undefined,
+			this.locked
+		);
 
 		const list = scroll.createDiv({ cls: "set-list-rows" });
 		list.addEventListener("dragover", (evt) => {
@@ -150,7 +187,7 @@ export class SetListEditView extends BaseSetListView {
 
 	private renderSongRow(list: HTMLElement, entry: SongEntry, index: number, songNumber: number): void {
 		const row = list.createDiv({ cls: "set-list-row set-list-row-song" });
-		row.setAttribute("draggable", "true");
+		row.setAttribute("draggable", this.locked ? "false" : "true");
 		row.dataset.entryIndex = String(index);
 		if (!entry.file) {
 			row.addClass("set-list-row-unresolved");
@@ -180,6 +217,7 @@ export class SetListEditView extends BaseSetListView {
 		});
 
 		row.addEventListener("dragstart", (evt) => {
+			if (this.locked) return;
 			evt.dataTransfer?.setData("text/plain", String(index));
 			row.addClass("set-list-row-dragging");
 			this.dragFromIndex = index;
@@ -203,6 +241,7 @@ export class SetListEditView extends BaseSetListView {
 
 	private handleDrop(evt: DragEvent): void {
 		this.resetDragShuffle();
+		if (this.locked) return;
 
 		const fromIndex = Number(evt.dataTransfer?.getData("text/plain"));
 		if (Number.isNaN(fromIndex)) return;
@@ -287,8 +326,17 @@ export class SetListEditView extends BaseSetListView {
 		);
 	}
 
+	isLocked(): boolean {
+		return this.locked;
+	}
+
+	toggleLock(): void {
+		this.locked = !this.locked;
+		this.render();
+	}
+
 	removeSelectedSong(): void {
-		if (!this.hasValidSelection() || this.selectedIndex === null) return;
+		if (this.locked || !this.hasValidSelection() || this.selectedIndex === null) return;
 		void this.persist(removeSong(this.parsed, this.selectedIndex));
 		this.selectedIndex = null;
 	}
@@ -347,7 +395,7 @@ export class SetListEditView extends BaseSetListView {
 	}
 
 	openSongPicker(replaceIndex?: number): void {
-		if (!this.file) return;
+		if (this.locked || !this.file) return;
 		const sourcePath = this.file.path;
 		const includedPaths = new Set(
 			this.parsed.entries
@@ -421,6 +469,7 @@ export class SetListEditView extends BaseSetListView {
 	}
 
 	tagAllSongsWithBand(band: string): void {
+		if (this.locked) return;
 		const tag = sanitizeTag(band);
 		if (!tag) return;
 		void addTagToAllSongs(this.app, this.parsed, tag);
@@ -432,7 +481,7 @@ export class SetListEditView extends BaseSetListView {
 	 * unmatched line is still visible to fix up by hand rather than silently dropped.
 	 */
 	async pasteSongsFromClipboard(): Promise<void> {
-		if (!this.file) return;
+		if (this.locked || !this.file) return;
 
 		let text: string;
 		try {
@@ -464,6 +513,7 @@ export class SetListEditView extends BaseSetListView {
 	 * Blank text rows (spacing-only) are dropped, matching what paste itself ignores.
 	 */
 	async copyToClipboard(): Promise<void> {
+		if (this.locked) return;
 		const lines = this.parsed.entries
 			.map((entry) => (entry.type === "song" ? entry.displayText : entry.raw).trim())
 			.filter((line) => line.length > 0);
@@ -477,7 +527,7 @@ export class SetListEditView extends BaseSetListView {
 	}
 
 	private openAsSourceMode(): void {
-		if (!this.file) return;
+		if (this.locked || !this.file) return;
 		// Explicit Source Mode (state.source: true) is respected by main.ts's
 		// auto-switch-to-edit-view handler, so this stays put on reopen.
 		void this.leaf.setViewState({

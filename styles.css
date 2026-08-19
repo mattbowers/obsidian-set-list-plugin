@@ -12,6 +12,14 @@
 	top: 0;
 	z-index: 3;
 	background-color: var(--background-primary);
+	transition: background-color 150ms ease;
+}
+
+/* Unlocked = editing is live (add/remove/reorder/etc. can actually change the note) — an
+   accent-tinted background flags that, so it reads as visually distinct from the default
+   locked/read-only state at a glance. */
+.set-list-toolbar.is-unlocked {
+	background-color: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-primary));
 }
 
 /* Song count, and the set list's own band (from its frontmatter) when present — shown above
@@ -47,6 +55,14 @@
 .set-list-toolbar .clickable-icon svg {
 	width: 64px;
 	height: 64px;
+}
+
+.set-list-toolbar .clickable-icon:disabled {
+	opacity: 0.28;
+}
+
+.set-list-lock-button {
+	color: var(--interactive-accent);
 }
 
 .set-list-rows {

@@ -109,6 +109,8 @@ export default class SetListPlugin extends Plugin {
 			checkCallback: (checking) => {
 				const file = this.activeSetListFile();
 				if (!file) return false;
+				const editView = this.app.workspace.getActiveViewOfType(SetListEditView);
+				if (editView?.isLocked()) return false;
 
 				if (!checking) {
 					// Explicit Source Mode (state.source: true) is respected by the file-open
@@ -133,11 +135,26 @@ export default class SetListPlugin extends Plugin {
 
 	private addEditViewActionCommands(): void {
 		this.addCommand({
+			id: "toggle-lock",
+			name: "Toggle lock",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
+				if (!view) return false;
+				if (!checking) view.toggleLock();
+				return true;
+			},
+		});
+
+		// Add/replace/remove/reorder, tagging, and clipboard paste/copy all write to the note (or
+		// a song file, for tagging) — unavailable while the view's lock is on. Stage/direct-open/
+		// new-tab stay available regardless (see their own commands below), matching the toolbar's
+		// own locked-state gating in SetListEditView.render().
+		this.addCommand({
 			id: "add-song",
 			name: "Add song",
 			checkCallback: (checking) => {
 				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
-				if (!view) return false;
+				if (!view || view.isLocked()) return false;
 				if (!checking) view.openSongPicker();
 				return true;
 			},
@@ -159,7 +176,7 @@ export default class SetListPlugin extends Plugin {
 			name: "Replace selected song",
 			checkCallback: (checking) => {
 				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
-				if (!view || !view.hasValidSelection()) return false;
+				if (!view || view.isLocked() || !view.hasValidSelection()) return false;
 				if (!checking) view.replaceSelectedSong();
 				return true;
 			},
@@ -170,7 +187,7 @@ export default class SetListPlugin extends Plugin {
 			name: "Remove selected song",
 			checkCallback: (checking) => {
 				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
-				if (!view || !view.hasValidSelection()) return false;
+				if (!view || view.isLocked() || !view.hasValidSelection()) return false;
 				if (!checking) view.removeSelectedSong();
 				return true;
 			},
@@ -197,7 +214,7 @@ export default class SetListPlugin extends Plugin {
 				if (!Platform.isDesktop) return false;
 				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
 				const band = view?.getBandName();
-				if (!view || !band) return false;
+				if (!view || view.isLocked() || !band) return false;
 				if (!checking) view.tagAllSongsWithBand(band);
 				return true;
 			},
@@ -209,7 +226,7 @@ export default class SetListPlugin extends Plugin {
 			checkCallback: (checking) => {
 				if (!Platform.isDesktop) return false;
 				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
-				if (!view) return false;
+				if (!view || view.isLocked()) return false;
 				if (!checking) void view.pasteSongsFromClipboard();
 				return true;
 			},
@@ -221,7 +238,7 @@ export default class SetListPlugin extends Plugin {
 			checkCallback: (checking) => {
 				if (!Platform.isDesktop) return false;
 				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
-				if (!view) return false;
+				if (!view || view.isLocked()) return false;
 				if (!checking) void view.copyToClipboard();
 				return true;
 			},
