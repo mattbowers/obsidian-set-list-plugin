@@ -54,14 +54,17 @@ export class SongPickerModal extends FuzzySuggestModal<TFile> {
 			.getFiles()
 			.filter((file) => file.extension === "md" || file.extension === "pdf")
 			.filter((file) => !isSetListFile(this.app.metadataCache.getFileCache(file)));
-		if (!this.filterByBand || !this.bandTag) return files;
+		let filtered = files;
+		if (this.filterByBand && this.bandTag) {
+			const wanted = `#${this.bandTag}`.toLowerCase();
+			filtered = files.filter((file) => {
+				const cache = this.app.metadataCache.getFileCache(file);
+				const tags = cache ? getAllTags(cache) : null;
+				return tags?.some((tag) => tag.toLowerCase() === wanted) ?? false;
+			});
+		}
 
-		const wanted = `#${this.bandTag}`.toLowerCase();
-		return files.filter((file) => {
-			const cache = this.app.metadataCache.getFileCache(file);
-			const tags = cache ? getAllTags(cache) : null;
-			return tags?.some((tag) => tag.toLowerCase() === wanted) ?? false;
-		});
+		return filtered.sort((a, b) => a.basename.localeCompare(b.basename, undefined, { sensitivity: "base" }));
 	}
 
 	getItemText(file: TFile): string {
