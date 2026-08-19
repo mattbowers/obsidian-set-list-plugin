@@ -38,6 +38,16 @@ export default class SetListPlugin extends Plugin {
 				window.requestAnimationFrame(() => void this.maybeOpenEditView(file, 0));
 			})
 		);
+
+		// Reading-view toggle (the escape hatch back from Source mode) doesn't fire "file-open" —
+		// it flips MarkdownView's own mode within the same leaf — but does fire "layout-change".
+		// maybeOpenEditView's state.mode === "source" check naturally lets this through once the
+		// user has clicked away from Source mode into Reading view.
+		this.registerEvent(
+			this.app.workspace.on("layout-change", () => {
+				void this.maybeOpenEditView(this.app.workspace.getActiveFile(), 0);
+			})
+		);
 	}
 
 	onunload() {
