@@ -351,7 +351,15 @@ export class SetListEditView extends BaseSetListView {
 			if (replaceIndex !== undefined) {
 				void this.persist(replaceSong(this.parsed, replaceIndex, entry));
 			} else {
-				void this.persist(addSong(this.parsed, entry));
+				// Insert after the current selection so successive adds (the picker stays open)
+				// land in pick order, one after another, rather than each landing right after the
+				// original selection and reversing that order; falls back to the end when nothing
+				// is selected. The newly-added song becomes the selection for the same reason.
+				const insertIndex = this.hasValidSelection() && this.selectedIndex !== null
+					? this.selectedIndex + 1
+					: this.parsed.entries.length;
+				this.selectedIndex = insertIndex;
+				void this.persist(addSong(this.parsed, entry, insertIndex));
 			}
 		}).open();
 	}
