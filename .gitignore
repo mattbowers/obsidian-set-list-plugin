@@ -6,3 +6,5 @@ main.js
 
 .DS_Store
 .vscode/*
+
+.claude/
