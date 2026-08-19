@@ -144,6 +144,17 @@ export default class SetListPlugin extends Plugin {
 		});
 
 		this.addCommand({
+			id: "direct-open-song",
+			name: "Direct open song",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
+				if (!view) return false;
+				if (!checking) view.openDirectSongPicker();
+				return true;
+			},
+		});
+
+		this.addCommand({
 			id: "replace-selected-song",
 			name: "Replace selected song",
 			checkCallback: (checking) => {

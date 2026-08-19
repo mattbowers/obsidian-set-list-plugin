@@ -1,4 +1,4 @@
-import { setIcon, ViewStateResult } from "obsidian";
+import { setIcon, TFile, ViewStateResult } from "obsidian";
 import { BaseSetListView } from "./BaseSetListView";
 import { renderSong } from "../render/renderSong";
 import { findFirstSongIndex, findNextSongIndex, findPrevSongIndex } from "../setlist/navigation";
@@ -15,6 +15,11 @@ function pointerSample(evt: PointerEvent): PointerSample {
 
 export class SetListStageView extends BaseSetListView {
 	private currentIndex = 0;
+	// Set when Edit view's "Direct open song" jumps here for a song that isn't (necessarily) on
+	// the set list; overrides what's shown at currentIndex without touching `parsed`/the
+	// underlying note, and is cleared by the next navigation so swiping away from it resumes the
+	// real set list where it left off.
+	private adHocFile: TFile | null = null;
 	private stageContent: HTMLElement | null = null;
 	private songArea: HTMLElement | null = null;
 	private overlay: HTMLElement | null = null;
@@ -41,14 +46,22 @@ export class SetListStageView extends BaseSetListView {
 	}
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
-		if (state && typeof state === "object" && "index" in state && typeof state.index === "number") {
-			this.currentIndex = state.index;
+		if (state && typeof state === "object") {
+			if ("index" in state && typeof state.index === "number") {
+				this.currentIndex = state.index;
+			}
+			if ("adHocPath" in state && typeof state.adHocPath === "string") {
+				const file = this.app.vault.getAbstractFileByPath(state.adHocPath);
+				this.adHocFile = file instanceof TFile ? file : null;
+			} else {
+				this.adHocFile = null;
+			}
 		}
 		await super.setState(state, result);
 	}
 
 	getState(): Record<string, unknown> {
-		return { ...super.getState(), index: this.currentIndex };
+		return { ...super.getState(), index: this.currentIndex, adHocPath: this.adHocFile?.path ?? null };
 	}
 
 	async onOpen(): Promise<void> {
@@ -70,6 +83,7 @@ export class SetListStageView extends BaseSetListView {
 	goToNext(): void {
 		const next = findNextSongIndex(this.parsed, this.currentIndex);
 		if (next !== null) {
+			this.adHocFile = null;
 			this.currentIndex = next;
 			this.render();
 		}
@@ -78,6 +92,7 @@ export class SetListStageView extends BaseSetListView {
 	goToPrev(): void {
 		const prev = findPrevSongIndex(this.parsed, this.currentIndex);
 		if (prev !== null) {
+			this.adHocFile = null;
 			this.currentIndex = prev;
 			this.render();
 		}
@@ -205,20 +220,32 @@ export class SetListStageView extends BaseSetListView {
 		const songArea = this.songArea as HTMLElement;
 		songArea.empty();
 
-		const entry = this.parsed.entries[this.currentIndex];
-		const songEntry = entry?.type === "song" ? entry : this.fallbackToFirstSong();
-		if (!songEntry) {
-			songArea.createDiv({ cls: "set-list-song-missing", text: "No songs in this set list" });
-			return;
+		let file: TFile | null;
+		if (this.adHocFile) {
+			file = this.adHocFile;
+		} else {
+			const entry = this.parsed.entries[this.currentIndex];
+			const songEntry = entry?.type === "song" ? entry : this.fallbackToFirstSong();
+			if (!songEntry) {
+				songArea.createDiv({ cls: "set-list-song-missing", text: "No songs in this set list" });
+				return;
+			}
+
+			if (this.file) {
+				this.plugin.lastStageIndexByFile.set(this.file.path, this.currentIndex);
+			}
+			file = songEntry.file;
 		}
 
-		if (this.file) {
-			this.plugin.lastStageIndexByFile.set(this.file.path, this.currentIndex);
+		if (this.adHocFile) {
+			const badge = songArea.createDiv({ cls: "set-list-adhoc-badge" });
+			setIcon(badge, "shuffle");
+			badge.createSpan({ text: "Ad hoc" });
 		}
 
 		const readingView = songArea.createDiv({ cls: "set-list-song-container markdown-reading-view" });
 		const previewView = readingView.createDiv({ cls: "markdown-preview-view" });
-		void renderSong(this.app, this, previewView, songEntry.file);
+		void renderSong(this.app, this, previewView, file);
 	}
 
 	private fallbackToFirstSong(): SongEntry | null {

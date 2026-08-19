@@ -95,6 +95,7 @@ export class SetListEditView extends BaseSetListView {
 			!this.hasValidSelection()
 		);
 		this.createIconButton(toolbarButtons, "presentation", "Enter stage view", () => this.enterStageView());
+		this.createIconButton(toolbarButtons, "play", "Direct open song", () => this.openDirectSongPicker());
 		this.createIconButton(
 			toolbarButtons,
 			"external-link",
@@ -392,13 +393,31 @@ export class SetListEditView extends BaseSetListView {
 		await persistSetList(this.app, this.file, parsed);
 	}
 
-	enterStageView(): void {
+	enterStageView(adHocFile?: TFile): void {
 		if (!this.file) return;
 		const index = this.hasValidSelection() ? this.selectedIndex! : findFirstSongIndex(this.parsed) ?? 0;
 		void this.leaf.setViewState({
 			type: SET_LIST_STAGE_VIEW_TYPE,
-			state: { file: this.file.path, index },
+			state: { file: this.file.path, index, adHocPath: adHocFile?.path ?? null },
 		});
+	}
+
+	/**
+	 * Picks a song that isn't (necessarily) on the set list and jumps straight into Stage view
+	 * showing it — a request or filler song mid-set — without adding it to the set list note.
+	 * `index` still gets set from the current selection (as enterStageView's own default does),
+	 * so once the ad hoc song is swiped away from, Stage view resumes the real set list there.
+	 */
+	openDirectSongPicker(): void {
+		if (!this.file) return;
+		const includedPaths = new Set(
+			this.parsed.entries
+				.filter((entry): entry is SongEntry => entry.type === "song" && entry.file !== null)
+				.map((entry) => entry.file!.path)
+		);
+		new SongPickerModal(this.app, includedPaths, this.getBandTag(), true, (file) => {
+			this.enterStageView(file);
+		}).open();
 	}
 
 	tagAllSongsWithBand(band: string): void {
