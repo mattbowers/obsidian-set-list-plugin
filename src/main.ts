@@ -1,4 +1,4 @@
-import { MarkdownView, normalizePath, Plugin, TFile } from "obsidian";
+import { MarkdownView, normalizePath, Platform, Plugin, TFile } from "obsidian";
 import { isSetListFile, SET_LIST_FRONTMATTER_TYPE } from "./setlist/parser";
 import { SetListEditView } from "./views/SetListEditView";
 import { SetListStageView } from "./views/SetListStageView";
@@ -176,10 +176,14 @@ export default class SetListPlugin extends Plugin {
 			},
 		});
 
+		// Tagging/copy/paste are off-stage, desktop-oriented workflows (bulk clipboard import/export,
+		// tagging songs by band) — hidden on mobile from both the toolbar and the command palette,
+		// matching each other per the "a command is only listed when it would do something" rule above.
 		this.addCommand({
 			id: "tag-all-songs-with-band",
 			name: "Tag all songs with band",
 			checkCallback: (checking) => {
+				if (!Platform.isDesktop) return false;
 				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
 				const band = view?.getBandName();
 				if (!view || !band) return false;
@@ -192,6 +196,7 @@ export default class SetListPlugin extends Plugin {
 			id: "paste-songs-from-clipboard",
 			name: "Paste songs from clipboard",
 			checkCallback: (checking) => {
+				if (!Platform.isDesktop) return false;
 				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
 				if (!view) return false;
 				if (!checking) void view.pasteSongsFromClipboard();
@@ -203,6 +208,7 @@ export default class SetListPlugin extends Plugin {
 			id: "copy-to-clipboard",
 			name: "Copy to clipboard",
 			checkCallback: (checking) => {
+				if (!Platform.isDesktop) return false;
 				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
 				if (!view) return false;
 				if (!checking) void view.copyToClipboard();

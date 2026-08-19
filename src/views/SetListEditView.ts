@@ -1,4 +1,4 @@
-import { setIcon, setTooltip, TFile } from "obsidian";
+import { Platform, setIcon, setTooltip, TFile } from "obsidian";
 import { BaseSetListView } from "./BaseSetListView";
 import { SongPickerModal } from "../ui/SongPickerModal";
 import { addSong, appendEntries, removeSong, replaceSong, reorder } from "../setlist/mutations";
@@ -106,16 +106,20 @@ export class SetListEditView extends BaseSetListView {
 		// Set-list-level actions (as opposed to the selected-song actions above) sit on the
 		// right, so their grouping signals they act on the set list itself, not a song.
 		const toolbarRight = toolbarButtons.createDiv({ cls: "set-list-toolbar-group-right" });
-		this.createIconButton(toolbarRight, "clipboard-paste", "Paste songs from clipboard", () =>
-			void this.pasteSongsFromClipboard()
-		);
-		this.createIconButton(toolbarRight, "copy", "Copy to clipboard", () =>
-			void this.copyToClipboard()
-		);
-		if (bandName) {
-			this.createIconButton(toolbarRight, "tag", `Tag all songs with "${bandName}"`, () =>
-				this.tagAllSongsWithBand(bandName)
+		// Off-stage, desktop-oriented actions (bulk clipboard import/export, tagging by band) —
+		// hidden on mobile, where Stage view is the point and these just add clutter.
+		if (Platform.isDesktop) {
+			this.createIconButton(toolbarRight, "clipboard-paste", "Paste songs from clipboard", () =>
+				void this.pasteSongsFromClipboard()
 			);
+			this.createIconButton(toolbarRight, "copy", "Copy to clipboard", () =>
+				void this.copyToClipboard()
+			);
+			if (bandName) {
+				this.createIconButton(toolbarRight, "tag", `Tag all songs with "${bandName}"`, () =>
+					this.tagAllSongsWithBand(bandName)
+				);
+			}
 		}
 		this.createIconButton(toolbarRight, "code", "Source mode", () => this.openAsSourceMode());
 
