@@ -81,15 +81,24 @@ export class SetListStageView extends BaseSetListView {
 
 	// Public: also invoked directly by main.ts's "Next/Previous song" commands.
 	goToNext(): void {
+		if (this.adHocFile) {
+			// The ad hoc song stands in for whatever's at currentIndex, as if inserted right
+			// before it — moving forward reveals that song, so currentIndex itself doesn't move.
+			this.adHocFile = null;
+			this.render();
+			return;
+		}
+
 		const next = findNextSongIndex(this.parsed, this.currentIndex);
 		if (next !== null) {
-			this.adHocFile = null;
 			this.currentIndex = next;
 			this.render();
 		}
 	}
 
 	goToPrev(): void {
+		// Mirrors goToNext's framing: with the ad hoc song standing in front of currentIndex,
+		// "previous" means whatever came before currentIndex in the real set list.
 		const prev = findPrevSongIndex(this.parsed, this.currentIndex);
 		if (prev !== null) {
 			this.adHocFile = null;
@@ -235,12 +244,6 @@ export class SetListStageView extends BaseSetListView {
 				this.plugin.lastStageIndexByFile.set(this.file.path, this.currentIndex);
 			}
 			file = songEntry.file;
-		}
-
-		if (this.adHocFile) {
-			const badge = songArea.createDiv({ cls: "set-list-adhoc-badge" });
-			setIcon(badge, "shuffle");
-			badge.createSpan({ text: "Ad hoc" });
 		}
 
 		const readingView = songArea.createDiv({ cls: "set-list-song-container markdown-reading-view" });
