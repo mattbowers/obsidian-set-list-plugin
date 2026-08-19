@@ -187,7 +187,11 @@ export class SetListEditView extends BaseSetListView {
 
 	private renderSongRow(list: HTMLElement, entry: SongEntry, index: number, songNumber: number): void {
 		const row = list.createDiv({ cls: "set-list-row set-list-row-song" });
-		row.setAttribute("draggable", this.locked ? "false" : "true");
+		// Always draggable, even while locked — mobile's native touch-based drag-and-drop only
+		// reliably engages when an element is draggable from its very first render; toggling the
+		// attribute later (e.g. right after tapping unlock) doesn't register on touch the way it
+		// does with a mouse. The lock is enforced instead by cancelling the drag at dragstart.
+		row.setAttribute("draggable", "true");
 		row.dataset.entryIndex = String(index);
 		if (!entry.file) {
 			row.addClass("set-list-row-unresolved");
@@ -217,7 +221,10 @@ export class SetListEditView extends BaseSetListView {
 		});
 
 		row.addEventListener("dragstart", (evt) => {
-			if (this.locked) return;
+			if (this.locked) {
+				evt.preventDefault();
+				return;
+			}
 			evt.dataTransfer?.setData("text/plain", String(index));
 			row.addClass("set-list-row-dragging");
 			this.dragFromIndex = index;
