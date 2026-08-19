@@ -198,6 +198,17 @@ export default class SetListPlugin extends Plugin {
 				return true;
 			},
 		});
+
+		this.addCommand({
+			id: "copy-to-clipboard",
+			name: "Copy to clipboard",
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(SetListEditView);
+				if (!view) return false;
+				if (!checking) void view.copyToClipboard();
+				return true;
+			},
+		});
 	}
 
 	private addStageViewNavigationCommands(): void {

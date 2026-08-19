@@ -109,6 +109,9 @@ export class SetListEditView extends BaseSetListView {
 		this.createIconButton(toolbarRight, "clipboard-paste", "Paste songs from clipboard", () =>
 			void this.pasteSongsFromClipboard()
 		);
+		this.createIconButton(toolbarRight, "copy", "Copy to clipboard", () =>
+			void this.copyToClipboard()
+		);
 		if (bandName) {
 			this.createIconButton(toolbarRight, "tag", `Tag all songs with "${bandName}"`, () =>
 				this.tagAllSongsWithBand(bandName)
@@ -429,6 +432,25 @@ export class SetListEditView extends BaseSetListView {
 		});
 
 		void this.persist(appendEntries(this.parsed, newEntries));
+	}
+
+	/**
+	 * Opposite of pasteSongsFromClipboard: plain-text lines, one per entry — a song's own
+	 * displayText (no wikilink markup) for song rows, the raw line for text rows — so the
+	 * result round-trips back through paste (which re-matches song titles to vault files).
+	 * Blank text rows (spacing-only) are dropped, matching what paste itself ignores.
+	 */
+	async copyToClipboard(): Promise<void> {
+		const lines = this.parsed.entries
+			.map((entry) => (entry.type === "song" ? entry.displayText : entry.raw).trim())
+			.filter((line) => line.length > 0);
+		if (lines.length === 0) return;
+
+		try {
+			await navigator.clipboard.writeText(lines.join("\n"));
+		} catch (err) {
+			console.error("[SetList] Failed to write clipboard", err);
+		}
 	}
 
 	private openAsSourceMode(): void {
