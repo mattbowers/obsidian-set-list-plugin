@@ -13,6 +13,10 @@ export async function renderSong(
 		return;
 	}
 
+	if (file.extension === "md") {
+		container.createDiv({ cls: "set-list-song-title", text: file.basename });
+	}
+
 	const target = container.createDiv({ cls: "markdown-rendered" });
 
 	if (file.extension === "md") {

@@ -239,6 +239,16 @@
 	color: var(--text-on-accent);
 }
 
+/* Markdown songs only — a PDF's own content already carries its title, so this would be
+   redundant there (see renderSong.ts). Part of the normal scrolling content, not a sticky
+   header, so it's just a plain block ahead of the rendered song. */
+.set-list-song-title {
+	font-size: var(--font-ui-larger);
+	font-weight: var(--font-bold);
+	color: var(--text-normal);
+	margin-bottom: var(--size-4-2);
+}
+
 .set-list-song-missing {
 	display: flex;
 	align-items: center;
