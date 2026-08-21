@@ -195,10 +195,6 @@
 
 .set-list-swipe-indicator {
 	position: absolute;
-	/* Grows to 360px at full progress: 10px base * scale(36), matching the long-press ring. */
-	width: 10px;
-	height: 10px;
-	margin: -5px 0 0 -5px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -208,25 +204,38 @@
 	pointer-events: none;
 	opacity: 0;
 	--set-list-swipe-progress: 0;
-	/* No transition: this tracks the finger 1:1 on every pointermove, driven entirely by JS
-	   updates to --set-list-swipe-progress rather than a time-based animation. */
+	/* Grows via real width/height (10px at rest, up to 360px at full progress) rather than a
+	   CSS transform: scale on a fixed 10px box. The scale approach forced the title label below
+	   to be laid out and rasterized at a barely-1px font and only magnified after the fact —
+	   sub-2px text rasterizes against a hinting grid meant for much larger sizes, so glyphs
+	   (descenders especially, sometimes whole lines) were already clipped/mangled before the
+	   36x magnification made it obvious. Growing the box for real means the label's own
+	   font-size (see .set-list-swipe-indicator-label) can stay a normal, cleanly-rendered size
+	   throughout and just reflow as the box grows. left/top (set in
+	   SetListStageView.updateSwipeIndicator) mark the box's center via transform:
+	   translate(-50%, -50%) below, rather than a static negative margin — needed once the box's
+	   own size is no longer fixed, since a fixed margin only re-centers a fixed-size box.
+	   updateSwipeIndicator's own position-offset formula (radius = 5px + progress * 175px)
+	   still matches this exactly (10px + progress * 350px, halved), so it didn't need to
+	   change. No transition: this tracks the finger 1:1 on every pointermove, driven entirely by
+	   JS updates to --set-list-swipe-progress rather than a time-based animation. */
+	width: calc(10px + var(--set-list-swipe-progress) * 350px);
+	height: calc(10px + var(--set-list-swipe-progress) * 350px);
+	transform: translate(-50%, -50%);
 }
 
 .set-list-swipe-indicator svg {
-	/* Scales up together with the ring itself, since both are inside the same transformed
-	   element — sized here relative to the 10px unscaled ring, not the final 360px. */
+	/* Percentage of the ring's own (now real, not transform-scaled) box, so it grows in step
+	   with it. */
 	display: block;
-	width: 11.2px;
-	height: 11.2px;
+	width: 60%;
+	height: 60%;
 	margin: 0;
-	/* Small optical nudge down — the chevron glyph reads slightly high otherwise. */
-	transform: translateY(0.5px);
 	color: var(--interactive-accent);
 }
 
 .set-list-swipe-indicator.is-active {
 	opacity: calc(0.3 + var(--set-list-swipe-progress) * 0.6);
-	transform: scale(calc(1 + var(--set-list-swipe-progress) * 35));
 }
 
 /* Full brightness right as the drag crosses StageGestureController's own swipe threshold —
@@ -235,8 +244,35 @@
 	background-color: var(--interactive-accent);
 }
 
-.set-list-swipe-indicator.is-armed svg {
+.set-list-swipe-indicator.is-armed svg,
+.set-list-swipe-indicator.is-armed .set-list-swipe-indicator-label {
 	color: var(--text-on-accent);
+}
+
+.set-list-swipe-indicator-label {
+	/* display: inline-block is load-bearing: this is a <span>, and max-width/overflow are
+	   no-ops on a plain inline element per spec, so without it the label ignored every size
+	   constraint below and rendered at its full natural (untruncated) width. */
+	display: inline-block;
+	/* Grows with --set-list-swipe-progress like the ring itself, but as a real font-size
+	   (4px-30px) rather than a magnified sub-pixel one — see the ring's own comment above for
+	   why that distinction is what actually fixed the glyph clipping. */
+	font-size: calc(4px + var(--set-list-swipe-progress) * 26px);
+	font-weight: var(--font-semibold);
+	/* A font's own ascent+descent typically add up to more than 1em, so a line-height of
+	   exactly 1 leaves glyphs (descenders like g/y/p, and the bottom wrapped line especially)
+	   taller than their line box — which the overflow: hidden below then clips into. 1.3 gives
+	   real headroom for that without meaningfully shrinking how many wrapped lines fit. */
+	line-height: 1.3;
+	color: var(--interactive-accent);
+	text-align: center;
+	/* Percentage of the ring's own real box — stays well clear of the corners where the
+	   circle's curve would actually clip it, and square so a wrapped multi-word title fills the
+	   circle evenly in both directions instead of being squeezed onto one line. */
+	max-width: 65%;
+	max-height: 65%;
+	overflow: hidden;
+	white-space: normal;
 }
 
 /* Markdown songs only — a PDF's own content already carries its title, so this would be

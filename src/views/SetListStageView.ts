@@ -13,6 +13,12 @@ function pointerSample(evt: PointerEvent): PointerSample {
 	return { x: evt.clientX, y: evt.clientY, t: evt.timeStamp };
 }
 
+// How many px of the swipe indicator circle's bottom is left poking out below the touch point
+// (i.e. still under the finger) rather than being shifted fully clear of it — a fixed amount
+// regardless of the circle's current size, so the label near its center stays legible without
+// the whole circle disappearing off above the fingertip.
+const SWIPE_INDICATOR_FINGER_OVERLAP = 24;
+
 export class SetListStageView extends BaseSetListView {
 	private currentIndex = 0;
 	// Set when Edit view's "Direct open song" jumps here for a song that isn't (necessarily) on
@@ -201,17 +207,68 @@ export class SetListStageView extends BaseSetListView {
 
 		const direction = dx < 0 ? "left" : "right";
 		if (this.swipeIndicatorDirection !== direction) {
-			setIcon(this.swipeIndicator, direction === "left" ? "chevron-left" : "chevron-right");
+			this.renderSwipeIndicatorContent(direction);
 			this.swipeIndicatorDirection = direction;
 		}
 
 		const progress = Math.min(horizontal / this.gestureController.swipeMinDistance, 1);
 		const rect = this.overlay.getBoundingClientRect();
+		// Anchored above the touch point rather than centered on it, so the finger doesn't sit
+		// right over the title once the circle grows large enough to show one — but only shifted
+		// up by the circle's own current radius minus a fixed overlap, so part of the circle
+		// (just not its labeled center) still pokes out under the fingertip. Mirrors the CSS
+		// ring's own real width/height growth formula (see .set-list-swipe-indicator: width is
+		// 10px + progress * 350px, so radius is half that) so the offset grows in step with the
+		// circle instead of drifting off it.
+		const circleRadius = 5 + progress * 175;
+		const verticalOffset = Math.max(circleRadius - SWIPE_INDICATOR_FINGER_OVERLAP, 0);
 		this.swipeIndicator.style.left = `${evt.clientX - rect.left}px`;
-		this.swipeIndicator.style.top = `${evt.clientY - rect.top}px`;
+		this.swipeIndicator.style.top = `${evt.clientY - rect.top - verticalOffset}px`;
 		this.swipeIndicator.style.setProperty("--set-list-swipe-progress", String(progress));
 		this.swipeIndicator.toggleClass("is-armed", progress >= 1);
 		this.swipeIndicator.addClass("is-active");
+	}
+
+	/** Both directions name the song a completed swipe would reveal, right inside the growing
+	 *  circle, so the title is legible before the swipe even completes — falls back to a stop
+	 *  sign if there's nothing to name in that direction (e.g. already on the first/last song),
+	 *  since the swipe wouldn't go anywhere. */
+	private renderSwipeIndicatorContent(direction: "left" | "right"): void {
+		if (!this.swipeIndicator) return;
+		this.swipeIndicator.empty();
+		this.swipeIndicator.removeClass("is-title");
+
+		const title = direction === "left" ? this.getNextSongTitle() : this.getPrevSongTitle();
+		if (title) {
+			this.swipeIndicator.addClass("is-title");
+			this.swipeIndicator.createSpan({ cls: "set-list-swipe-indicator-label", text: title });
+			return;
+		}
+		// Nothing to swipe to (already on the last/first song) — a stop sign reads more clearly
+		// as "this gesture won't do anything" than a chevron implying a direction that goes nowhere.
+		setIcon(this.swipeIndicator, "octagon-x");
+	}
+
+	/** Mirrors goToNext()'s own logic for which song a swipe-left would reveal, without actually
+	 *  navigating there. */
+	private getNextSongTitle(): string | null {
+		const entry = this.adHocFile
+			? this.parsed.entries[this.currentIndex]
+			: (() => {
+					const next = findNextSongIndex(this.parsed, this.currentIndex);
+					return next !== null ? this.parsed.entries[next] : null;
+				})();
+		if (!entry || entry.type !== "song") return null;
+		return entry.file?.basename ?? entry.displayText;
+	}
+
+	/** Mirrors goToPrev()'s own logic for which song a swipe-right would reveal, without actually
+	 *  navigating there. Unlike goToNext, goToPrev ignores any ad hoc file, so this does too. */
+	private getPrevSongTitle(): string | null {
+		const prev = findPrevSongIndex(this.parsed, this.currentIndex);
+		const entry = prev !== null ? this.parsed.entries[prev] : null;
+		if (!entry || entry.type !== "song") return null;
+		return entry.file?.basename ?? entry.displayText;
 	}
 
 	private resetGestureIndicators(): void {
