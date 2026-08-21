@@ -396,7 +396,7 @@ export class SetListEditView extends BaseSetListView {
 	private formatTempo(value: unknown): string | null {
 		const tempo = this.stringifyMetadataValue(value);
 		if (!tempo) return null;
-		return /\bbpm\b/i.test(tempo) ? tempo : `${tempo} BPM`;
+		return /\bbpm\b/i.test(tempo) ? tempo : `${tempo} bpm`;
 	}
 
 	private stringifyMetadataValue(value: unknown): string | null {
