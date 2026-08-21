@@ -342,6 +342,13 @@ export class SetListEditView extends BaseSetListView {
 		this.render();
 	}
 
+	// Used by main.ts's "New set list" flow: a brand-new, still-empty set list should open
+	// ready to add songs to immediately rather than making the user unlock it first.
+	unlock(): void {
+		this.locked = false;
+		this.render();
+	}
+
 	removeSelectedSong(): void {
 		if (this.locked || !this.hasValidSelection() || this.selectedIndex === null) return;
 		void this.persist(removeSong(this.parsed, this.selectedIndex));

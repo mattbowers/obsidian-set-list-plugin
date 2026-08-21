@@ -317,6 +317,9 @@ export default class SetListPlugin extends Plugin {
 			state: { file: file.path },
 		});
 		this.app.workspace.setActiveLeaf(leaf, { focus: true });
+		// A brand-new set list has nothing to protect yet — start unlocked so the user can add
+		// songs immediately instead of having to unlock first.
+		if (leaf.view instanceof SetListEditView) leaf.view.unlock();
 	}
 
 	private getAvailableSetListPath(folderPath: string): string {
