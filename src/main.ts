@@ -6,7 +6,12 @@ import { MARKDOWN_VIEW_TYPE, SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE }
 import { installSidebarSwipeGuard } from "./gestures/sidebarSwipeGuard";
 import { MidiAccessProvider } from "./midi/midiAccess";
 import { MidiOutputController, type MidiOutputSettings } from "./midi/midiOutput";
-import { MidiInputController, type MidiInputSettings } from "./midi/midiInput";
+import {
+	DEFAULT_PAGE_DOWN_CONTROL_CHANGE,
+	DEFAULT_PAGE_UP_CONTROL_CHANGE,
+	MidiInputController,
+	type MidiInputSettings,
+} from "./midi/midiInput";
 import { SetListSettingTab } from "./midi/SetListSettingTab";
 
 const MAX_OPEN_EDIT_VIEW_ATTEMPTS = 10;
@@ -18,6 +23,8 @@ const DEFAULT_SETTINGS: SetListSettings = {
 	midiOutputDeviceId: "",
 	midiInputEnabled: false,
 	midiInputDeviceId: "",
+	pageUpControlChange: DEFAULT_PAGE_UP_CONTROL_CHANGE,
+	pageDownControlChange: DEFAULT_PAGE_DOWN_CONTROL_CHANGE,
 };
 
 export default class SetListPlugin extends Plugin {

@@ -1,4 +1,4 @@
-import { App, DropdownComponent, PluginSettingTab, Setting } from "obsidian";
+import { App, DropdownComponent, PluginSettingTab, Setting, TextComponent } from "obsidian";
 import type SetListPlugin from "../main";
 
 export class SetListSettingTab extends PluginSettingTab {
@@ -39,7 +39,7 @@ export class SetListSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Turn PDF pages over MIDI")
-			.setDesc("Listen for MIDI Control Change 14/15 (a common foot-pedal mapping) to page a PDF song back/forward in Stage view")
+			.setDesc("Listen for MIDI Control Change messages (a common foot-pedal mapping) to page a PDF song back/forward in Stage view")
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.midiInputEnabled).onChange(async (value) => {
 					this.plugin.settings.midiInputEnabled = value;
@@ -62,6 +62,42 @@ export class SetListSettingTab extends PluginSettingTab {
 					},
 				})
 			);
+
+		new Setting(containerEl)
+			.setName("Page up Control Change number")
+			.setDesc("Controller number (0-127) that pages a PDF song back")
+			.addText((text) =>
+				this.bindControlChangeNumberInput(text, this.plugin.settings.pageUpControlChange, async (value) => {
+					this.plugin.settings.pageUpControlChange = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName("Page down Control Change number")
+			.setDesc("Controller number (0-127) that pages a PDF song forward")
+			.addText((text) =>
+				this.bindControlChangeNumberInput(text, this.plugin.settings.pageDownControlChange, async (value) => {
+					this.plugin.settings.pageDownControlChange = value;
+					await this.plugin.saveSettings();
+				})
+			);
+	}
+
+	/** A plain number input (Setting has no dedicated bounded-integer component) clamped to a
+	 *  valid MIDI controller number — out-of-range or non-numeric input is silently clamped/ignored
+	 *  rather than rejected outright, so a mid-edit value (e.g. a blank field while retyping)
+	 *  doesn't flash an error. */
+	private bindControlChangeNumberInput(text: TextComponent, initialValue: number, onChange: (value: number) => Promise<void>): void {
+		text.inputEl.type = "number";
+		text.inputEl.min = "0";
+		text.inputEl.max = "127";
+		text.setValue(String(initialValue));
+		text.onChange((raw) => {
+			const parsed = Number(raw);
+			if (!Number.isFinite(parsed)) return;
+			void onChange(Math.min(127, Math.max(0, Math.round(parsed))));
+		});
 	}
 
 	private async populateDeviceDropdown(

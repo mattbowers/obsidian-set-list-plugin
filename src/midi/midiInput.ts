@@ -3,15 +3,19 @@ import type { MidiAccessProvider } from "./midiAccess";
 export interface MidiInputSettings {
 	midiInputEnabled: boolean;
 	midiInputDeviceId: string;
+	pageUpControlChange: number;
+	pageDownControlChange: number;
 }
 
-// A common foot-pedal Control Change mapping (e.g. AirTurn/PageFlip-style pedals default to
-// these), matching keyboard PgUp/PgDn convention: 14 goes back, 15 goes forward.
-const PAGE_UP_CONTROL_CHANGE = 14;
-const PAGE_DOWN_CONTROL_CHANGE = 15;
+// Defaults match a common foot-pedal Control Change mapping (e.g. AirTurn/PageFlip-style pedals
+// default to these), matching keyboard PgUp/PgDn convention: 14 goes back, 15 goes forward.
+// User-configurable in settings since not every pedal/controller uses this mapping.
+export const DEFAULT_PAGE_UP_CONTROL_CHANGE = 14;
+export const DEFAULT_PAGE_DOWN_CONTROL_CHANGE = 15;
 
-/** Listens for MIDI Control Change messages on the configured input device and turns CC14/CC15
- *  into page-turn callbacks, for hands-free paging through a PDF song in Stage view. */
+/** Listens for MIDI Control Change messages on the configured input device and turns the
+ *  configured page-up/page-down controller numbers into page-turn callbacks, for hands-free
+ *  paging through a PDF song in Stage view. */
 export class MidiInputController {
 	private input: MIDIInput | null = null;
 
@@ -65,9 +69,9 @@ export class MidiInputController {
 		if ((status & 0xf0) !== 0xb0) return; // not a Control Change message
 		if (value === 0) return; // ignore a pedal's "released" message, momentary pedals send both
 
-		if (controller === PAGE_UP_CONTROL_CHANGE) {
+		if (controller === this.settings.pageUpControlChange) {
 			this.onPageUp();
-		} else if (controller === PAGE_DOWN_CONTROL_CHANGE) {
+		} else if (controller === this.settings.pageDownControlChange) {
 			this.onPageDown();
 		}
 	}
