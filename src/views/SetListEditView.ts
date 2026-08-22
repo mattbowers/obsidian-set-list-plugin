@@ -3,7 +3,7 @@ import { BaseSetListView } from "./BaseSetListView";
 import { SongPickerModal } from "../ui/SongPickerModal";
 import { addSong, appendEntries, removeSong, replaceSong, reorder } from "../setlist/mutations";
 import { persistSetList } from "../setlist/persist";
-import { findFirstSongIndex } from "../setlist/navigation";
+import { findFirstSongIndex, findNextSongIndex, findPrevSongIndex } from "../setlist/navigation";
 import { getBandName as readBandName } from "../setlist/parser";
 import { addTagToAllSongs, sanitizeTag } from "../setlist/tagging";
 import { findBestSongMatches } from "../setlist/songMatch";
@@ -47,6 +47,43 @@ export class SetListEditView extends BaseSetListView {
 	// pane's back button all end up here via this same onLoadFile hook) — lands on the right
 	// row. Only applies to a fresh selection; an existing one (e.g. the user already clicked
 	// a row) is left alone.
+	async onOpen(): Promise<void> {
+		await super.onOpen();
+		this.registerDomEvent(document, "keydown", (evt) => this.handleKeydown(evt));
+	}
+
+	/** Ignored while a modal's own search input (e.g. SongPickerModal) or any other text field has
+	 *  focus, so this doesn't steal arrow keys from a fuzzy suggester's own suggestion navigation. */
+	private handleKeydown(evt: KeyboardEvent): void {
+		const target = evt.target;
+		if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
+
+		if (evt.key === "ArrowDown") {
+			evt.preventDefault();
+			this.selectAdjacentSong(1);
+		} else if (evt.key === "ArrowUp") {
+			evt.preventDefault();
+			this.selectAdjacentSong(-1);
+		} else if (evt.key === "Enter" && this.hasValidSelection()) {
+			evt.preventDefault();
+			this.enterStageView();
+		}
+	}
+
+	private selectAdjacentSong(direction: 1 | -1): void {
+		const nextIndex =
+			direction === 1
+				? findNextSongIndex(this.parsed, this.selectedIndex ?? -1)
+				: findPrevSongIndex(this.parsed, this.selectedIndex ?? this.parsed.entries.length);
+		if (nextIndex === null) return;
+
+		this.selectedIndex = nextIndex;
+		this.render();
+		this.contentEl
+			.querySelector(`.set-list-row[data-entry-index="${nextIndex}"]`)
+			?.scrollIntoView({ block: "nearest" });
+	}
+
 	async onLoadFile(file: TFile): Promise<void> {
 		await super.onLoadFile(file);
 		if (this.selectedIndex === null) {

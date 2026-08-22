@@ -88,6 +88,9 @@ export class SetListStageView extends BaseSetListView {
 		} else if (evt.key === "ArrowLeft") {
 			evt.preventDefault();
 			this.goToPrev();
+		} else if (evt.key === "Escape") {
+			evt.preventDefault();
+			this.exitToEditView();
 		}
 	}
 
