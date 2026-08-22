@@ -1,4 +1,5 @@
 import { App, Component, MarkdownRenderer, TFile } from "obsidian";
+import { renderPdf } from "./renderPdf";
 
 export async function renderSong(
 	app: App,
@@ -15,14 +16,11 @@ export async function renderSong(
 
 	if (file.extension === "md") {
 		container.createDiv({ cls: "set-list-song-title", text: file.basename });
-	}
-
-	const target = container.createDiv({ cls: "markdown-rendered" });
-
-	if (file.extension === "md") {
+		const target = container.createDiv({ cls: "markdown-rendered" });
 		const content = await app.vault.cachedRead(file);
 		await MarkdownRenderer.render(app, content, target, file.path, component);
 	} else {
-		await MarkdownRenderer.render(app, `![[${file.path}]]`, target, file.path, component);
+		const target = container.createDiv({ cls: "set-list-pdf-view" });
+		await renderPdf(app, component, target, file);
 	}
 }
