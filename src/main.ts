@@ -4,8 +4,15 @@ import { SetListEditView } from "./views/SetListEditView";
 import { SetListStageView } from "./views/SetListStageView";
 import { MARKDOWN_VIEW_TYPE, SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./views/viewTypes";
 import { installSidebarSwipeGuard } from "./gestures/sidebarSwipeGuard";
+import { MidiOutputController, type MidiOutputSettings } from "./midi/midiOutput";
+import { SetListSettingTab } from "./midi/SetListSettingTab";
 
 const MAX_OPEN_EDIT_VIEW_ATTEMPTS = 10;
+
+const DEFAULT_SETTINGS: MidiOutputSettings = {
+	midiOutputEnabled: false,
+	midiOutputDeviceId: "",
+};
 
 export default class SetListPlugin extends Plugin {
 	private uninstallSwipeGuard: (() => void) | null = null;
@@ -14,8 +21,14 @@ export default class SetListPlugin extends Plugin {
 	// pane back button, ...) so SetListEditView can restore the right selection on load
 	// regardless of how the user got back to it.
 	readonly lastStageIndexByFile: Map<string, number> = new Map();
+	settings!: MidiOutputSettings;
+	midi!: MidiOutputController;
 
 	async onload() {
+		await this.loadSettings();
+		this.midi = new MidiOutputController(this.settings, () => this.saveSettings());
+		this.addSettingTab(new SetListSettingTab(this.app, this));
+
 		this.registerView(SET_LIST_EDIT_VIEW_TYPE, (leaf) => new SetListEditView(leaf, this));
 		this.registerView(SET_LIST_STAGE_VIEW_TYPE, (leaf) => new SetListStageView(leaf, this));
 
@@ -337,5 +350,13 @@ export default class SetListPlugin extends Plugin {
 
 		const cache = this.app.metadataCache.getFileCache(file);
 		return isSetListFile(cache) ? file : null;
+	}
+
+	async loadSettings(): Promise<void> {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings(): Promise<void> {
+		await this.saveData(this.settings);
 	}
 }

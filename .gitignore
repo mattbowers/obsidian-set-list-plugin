@@ -7,4 +7,7 @@ main.js
 .DS_Store
 .vscode/*
 
+# plugin's saved settings, written by saveData() when this repo is symlinked into a test vault
+data.json
+
 .claude/

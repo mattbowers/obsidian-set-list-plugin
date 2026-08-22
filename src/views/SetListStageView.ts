@@ -34,6 +34,9 @@ export class SetListStageView extends BaseSetListView {
 	// right before the next one is created so navigating away always tears down what the previous
 	// song's render registered instead of accumulating it for the life of the view.
 	private songComponent: Component | null = null;
+	// The last file whose title was sent as a MIDI SysEx message, so re-rendering the same song
+	// (e.g. a metadata-cache refresh of the set list note itself) doesn't resend it.
+	private lastSentSongPath: string | null = null;
 	private overlay: HTMLElement | null = null;
 	private longPressIndicator: HTMLElement | null = null;
 	private swipeIndicator: HTMLElement | null = null;
@@ -310,6 +313,11 @@ export class SetListStageView extends BaseSetListView {
 				this.plugin.lastStageIndexByFile.set(this.file.path, this.currentIndex);
 			}
 			file = songEntry.file;
+		}
+
+		if (file && file.path !== this.lastSentSongPath) {
+			this.lastSentSongPath = file.path;
+			void this.plugin.midi.sendSongTitle(file.basename);
 		}
 
 		if (this.songComponent) {
