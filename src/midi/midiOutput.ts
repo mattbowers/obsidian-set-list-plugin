@@ -1,3 +1,4 @@
+import type { MidiAccessProvider } from "./midiAccess";
 import { buildSongTitleSysEx } from "./sysex";
 
 export interface MidiOutputSettings {
@@ -5,34 +6,15 @@ export interface MidiOutputSettings {
 	midiOutputDeviceId: string;
 }
 
-/** Requests Web MIDI access lazily (only once a caller actually asks for outputs or sends a
- *  message) and caches it for the plugin's lifetime — `navigator.requestMIDIAccess` triggers a
- *  one-time browser permission prompt, so this avoids firing it just because the plugin loaded. */
 export class MidiOutputController {
-	private midiAccess: MIDIAccess | null = null;
-
 	constructor(
+		private readonly access: MidiAccessProvider,
 		private readonly settings: MidiOutputSettings,
 		private readonly persistSettings: () => Promise<void>
 	) {}
 
-	private async requestMidiAccess(): Promise<MIDIAccess | null> {
-		if (this.midiAccess) return this.midiAccess;
-		if (!navigator.requestMIDIAccess) {
-			console.error("[SetList] Web MIDI API not supported in this browser");
-			return null;
-		}
-		try {
-			this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
-			return this.midiAccess;
-		} catch (error) {
-			console.error("[SetList] Failed to access MIDI devices:", error);
-			return null;
-		}
-	}
-
 	async getAvailableOutputs(): Promise<MIDIOutput[]> {
-		const access = await this.requestMidiAccess();
+		const access = await this.access.request();
 		if (!access) return [];
 		const outputs: MIDIOutput[] = [];
 		access.outputs.forEach((output) => outputs.push(output));

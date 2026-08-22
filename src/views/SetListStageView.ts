@@ -125,6 +125,31 @@ export class SetListStageView extends BaseSetListView {
 		}
 	}
 
+	/** Pages a rendered PDF song forward/back by one spread — driven by main.ts's MidiInputController
+	 *  on a Control Change page-turn message. A no-op when the current song isn't a PDF (or its
+	 *  spreads haven't rendered yet): there's simply nothing matching `.set-list-pdf-spread` to page
+	 *  between, so this doesn't need its own file-type check. */
+	pageBySpread(direction: "up" | "down"): void {
+		const spreads = Array.from(this.contentEl.querySelectorAll<HTMLElement>(".set-list-pdf-spread"));
+		if (spreads.length === 0) return;
+
+		// Each spread's top offset in contentEl's own scrollable content coordinate space —
+		// via getBoundingClientRect rather than offsetTop, since offsetTop is relative to the
+		// nearest positioned ancestor (.set-list-stage-content), not necessarily contentEl itself.
+		const containerTop = this.contentEl.getBoundingClientRect().top;
+		const scrollTop = this.contentEl.scrollTop;
+		const spreadTops = spreads.map((el) => el.getBoundingClientRect().top - containerTop + scrollTop);
+
+		let currentIndex = 0;
+		for (let i = 0; i < spreadTops.length; i++) {
+			if (spreadTops[i] <= scrollTop + 1) currentIndex = i;
+		}
+
+		const targetIndex =
+			direction === "down" ? Math.min(currentIndex + 1, spreads.length - 1) : Math.max(currentIndex - 1, 0);
+		this.contentEl.scrollTo({ top: spreadTops[targetIndex] });
+	}
+
 	private exitToEditView(): void {
 		if (!this.file) return;
 		void this.leaf.setViewState({

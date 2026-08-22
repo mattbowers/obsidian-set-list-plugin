@@ -26,32 +26,74 @@ export class SetListSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("MIDI output device")
 			.setDesc("Which MIDI output device receives the song title SysEx message")
-			.addDropdown((dropdown) => void this.populateOutputDropdown(dropdown));
+			.addDropdown((dropdown) =>
+				void this.populateDeviceDropdown(dropdown, {
+					loadDevices: () => this.plugin.midi.getAvailableOutputs(),
+					selectedValue: this.plugin.settings.midiOutputDeviceId,
+					onChange: async (value) => {
+						this.plugin.settings.midiOutputDeviceId = value;
+						await this.plugin.saveSettings();
+					},
+				})
+			);
+
+		new Setting(containerEl)
+			.setName("Turn PDF pages over MIDI")
+			.setDesc("Listen for MIDI Control Change 14/15 (a common foot-pedal mapping) to page a PDF song back/forward in Stage view")
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.midiInputEnabled).onChange(async (value) => {
+					this.plugin.settings.midiInputEnabled = value;
+					await this.plugin.saveSettings();
+					await this.plugin.midiInput.refresh();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName("MIDI input device")
+			.setDesc("Which MIDI input device sends the page-turn Control Change messages")
+			.addDropdown((dropdown) =>
+				void this.populateDeviceDropdown(dropdown, {
+					loadDevices: () => this.plugin.midiInput.getAvailableInputs(),
+					selectedValue: this.plugin.settings.midiInputDeviceId,
+					onChange: async (value) => {
+						this.plugin.settings.midiInputDeviceId = value;
+						await this.plugin.saveSettings();
+						await this.plugin.midiInput.refresh();
+					},
+				})
+			);
 	}
 
-	private async populateOutputDropdown(dropdown: DropdownComponent): Promise<void> {
-		const emptyLabel = "No MIDI outputs available";
+	private async populateDeviceDropdown(
+		dropdown: DropdownComponent,
+		{
+			loadDevices,
+			selectedValue,
+			onChange,
+		}: {
+			loadDevices: () => Promise<Array<MIDIInput | MIDIOutput>>;
+			selectedValue: string;
+			onChange: (value: string) => Promise<void>;
+		}
+	): Promise<void> {
+		const emptyLabel = "No MIDI devices available";
 		try {
-			const outputs = await this.plugin.midi.getAvailableOutputs();
-			if (outputs.length === 0) {
+			const devices = await loadDevices();
+			if (devices.length === 0) {
 				dropdown.addOption("", emptyLabel);
 				dropdown.setDisabled(true);
 				return;
 			}
 
-			for (const output of outputs) {
-				dropdown.addOption(output.id, output.name || "Unknown device");
+			for (const device of devices) {
+				dropdown.addOption(device.id, device.name || "Unknown device");
 			}
 
-			const selectedValue = this.plugin.settings.midiOutputDeviceId;
-			const resolvedValue = outputs.some((output) => output.id === selectedValue) ? selectedValue : outputs[0].id;
+			const resolvedValue = devices.some((device) => device.id === selectedValue) ? selectedValue : devices[0].id;
 			dropdown.setValue(resolvedValue);
-			dropdown.onChange(async (value) => {
-				this.plugin.settings.midiOutputDeviceId = value;
-				await this.plugin.saveSettings();
-			});
+			dropdown.onChange((value) => void onChange(value));
 		} catch (error) {
-			console.error("[SetList] Failed to get MIDI output devices:", error);
+			console.error("[SetList] Failed to get MIDI devices:", error);
 			dropdown.addOption("", emptyLabel);
 			dropdown.setDisabled(true);
 		}

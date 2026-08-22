@@ -4,14 +4,20 @@ import { SetListEditView } from "./views/SetListEditView";
 import { SetListStageView } from "./views/SetListStageView";
 import { MARKDOWN_VIEW_TYPE, SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./views/viewTypes";
 import { installSidebarSwipeGuard } from "./gestures/sidebarSwipeGuard";
+import { MidiAccessProvider } from "./midi/midiAccess";
 import { MidiOutputController, type MidiOutputSettings } from "./midi/midiOutput";
+import { MidiInputController, type MidiInputSettings } from "./midi/midiInput";
 import { SetListSettingTab } from "./midi/SetListSettingTab";
 
 const MAX_OPEN_EDIT_VIEW_ATTEMPTS = 10;
 
-const DEFAULT_SETTINGS: MidiOutputSettings = {
+type SetListSettings = MidiOutputSettings & MidiInputSettings;
+
+const DEFAULT_SETTINGS: SetListSettings = {
 	midiOutputEnabled: false,
 	midiOutputDeviceId: "",
+	midiInputEnabled: false,
+	midiInputDeviceId: "",
 };
 
 export default class SetListPlugin extends Plugin {
@@ -21,13 +27,25 @@ export default class SetListPlugin extends Plugin {
 	// pane back button, ...) so SetListEditView can restore the right selection on load
 	// regardless of how the user got back to it.
 	readonly lastStageIndexByFile: Map<string, number> = new Map();
-	settings!: MidiOutputSettings;
+	settings!: SetListSettings;
 	midi!: MidiOutputController;
+	midiInput!: MidiInputController;
 
 	async onload() {
 		await this.loadSettings();
-		this.midi = new MidiOutputController(this.settings, () => this.saveSettings());
+		const midiAccess = new MidiAccessProvider();
+		this.midi = new MidiOutputController(midiAccess, this.settings, () => this.saveSettings());
+		this.midiInput = new MidiInputController(
+			midiAccess,
+			this.settings,
+			() => this.saveSettings(),
+			() => this.pageActiveStageView("up"),
+			() => this.pageActiveStageView("down")
+		);
 		this.addSettingTab(new SetListSettingTab(this.app, this));
+		if (this.settings.midiInputEnabled) {
+			await this.midiInput.refresh();
+		}
 
 		this.registerView(SET_LIST_EDIT_VIEW_TYPE, (leaf) => new SetListEditView(leaf, this));
 		this.registerView(SET_LIST_STAGE_VIEW_TYPE, (leaf) => new SetListStageView(leaf, this));
@@ -64,9 +82,17 @@ export default class SetListPlugin extends Plugin {
 	}
 
 	onunload() {
+		this.midiInput.detach();
 		this.uninstallSwipeGuard?.();
 		this.app.workspace.detachLeavesOfType(SET_LIST_EDIT_VIEW_TYPE);
 		this.app.workspace.detachLeavesOfType(SET_LIST_STAGE_VIEW_TYPE);
+	}
+
+	/** Routes a MIDI page-turn message to whichever Stage view is currently active — there's at
+	 *  most one at a time in practice, and paging one that isn't showing a PDF is already a no-op
+	 *  (see SetListStageView.pageBySpread), so no further check is needed here. */
+	private pageActiveStageView(direction: "up" | "down"): void {
+		this.app.workspace.getActiveViewOfType(SetListStageView)?.pageBySpread(direction);
 	}
 
 	private addSwitchViewCommand(id: string, name: string, viewType: string): void {
