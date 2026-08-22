@@ -1,4 +1,4 @@
-import { setIcon, TFile, ViewStateResult } from "obsidian";
+import { Component, setIcon, TFile, ViewStateResult } from "obsidian";
 import { BaseSetListView } from "./BaseSetListView";
 import { renderSong } from "../render/renderSong";
 import { findFirstSongIndex, findNextSongIndex, findPrevSongIndex } from "../setlist/navigation";
@@ -28,6 +28,12 @@ export class SetListStageView extends BaseSetListView {
 	private adHocFile: TFile | null = null;
 	private stageContent: HTMLElement | null = null;
 	private songArea: HTMLElement | null = null;
+	// Owns the currently-rendered song's Obsidian-side state (markdown post-processors, the open
+	// pdf.js document) — a fresh Component per render(), added as a child of this view so it's
+	// unloaded automatically if the whole view closes, and explicitly unloaded (via removeChild)
+	// right before the next one is created so navigating away always tears down what the previous
+	// song's render registered instead of accumulating it for the life of the view.
+	private songComponent: Component | null = null;
 	private overlay: HTMLElement | null = null;
 	private longPressIndicator: HTMLElement | null = null;
 	private swipeIndicator: HTMLElement | null = null;
@@ -303,9 +309,16 @@ export class SetListStageView extends BaseSetListView {
 			file = songEntry.file;
 		}
 
+		if (this.songComponent) {
+			this.removeChild(this.songComponent);
+		}
+		const songComponent = new Component();
+		this.addChild(songComponent);
+		this.songComponent = songComponent;
+
 		const readingView = songArea.createDiv({ cls: "set-list-song-container markdown-reading-view" });
 		const previewView = readingView.createDiv({ cls: "markdown-preview-view" });
-		void renderSong(this.app, this, previewView, file);
+		void renderSong(this.app, songComponent, previewView, file);
 	}
 
 	private fallbackToFirstSong(): SongEntry | null {

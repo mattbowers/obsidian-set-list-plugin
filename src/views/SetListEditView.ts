@@ -6,7 +6,7 @@ import { persistSetList } from "../setlist/persist";
 import { findFirstSongIndex } from "../setlist/navigation";
 import { getBandName as readBandName } from "../setlist/parser";
 import { addTagToAllSongs, sanitizeTag } from "../setlist/tagging";
-import { findBestSongMatch } from "../setlist/songMatch";
+import { findBestSongMatches } from "../setlist/songMatch";
 import { renderBuildBadge } from "../ui/buildBadge";
 import { MARKDOWN_VIEW_TYPE, SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./viewTypes";
 import type { ParsedSetList, SetListEntry, SongEntry } from "../setlist/types";
@@ -396,7 +396,9 @@ export class SetListEditView extends BaseSetListView {
 	private formatTempo(value: unknown): string | null {
 		const tempo = this.stringifyMetadataValue(value);
 		if (!tempo) return null;
-		return /\bbpm\b/i.test(tempo) ? tempo : `${tempo} bpm`;
+		// \b alone misses "bpm" directly after a digit (e.g. "120bpm") since digit/letter is not a
+		// word-boundary transition — match a leading digit/whitespace/start too, not just \b.
+		return /(?:^|\d|\s)bpm\b/i.test(tempo) ? tempo : `${tempo} bpm`;
 	}
 
 	private stringifyMetadataValue(value: unknown): string | null {
@@ -408,14 +410,18 @@ export class SetListEditView extends BaseSetListView {
 		return null;
 	}
 
-	openSongPicker(replaceIndex?: number): void {
-		if (this.locked || !this.file) return;
-		const sourcePath = this.file.path;
-		const includedPaths = new Set(
+	private getIncludedSongPaths(): Set<string> {
+		return new Set(
 			this.parsed.entries
 				.filter((entry): entry is SongEntry => entry.type === "song" && entry.file !== null)
 				.map((entry) => entry.file!.path)
 		);
+	}
+
+	openSongPicker(replaceIndex?: number): void {
+		if (this.locked || !this.file) return;
+		const sourcePath = this.file.path;
+		const includedPaths = this.getIncludedSongPaths();
 		new SongPickerModal(this.app, includedPaths, this.getBandTag(), replaceIndex !== undefined, (file) => {
 			const entry = this.createSongEntry(file, sourcePath);
 			if (replaceIndex !== undefined) {
@@ -472,11 +478,7 @@ export class SetListEditView extends BaseSetListView {
 	 */
 	openDirectSongPicker(): void {
 		if (!this.file) return;
-		const includedPaths = new Set(
-			this.parsed.entries
-				.filter((entry): entry is SongEntry => entry.type === "song" && entry.file !== null)
-				.map((entry) => entry.file!.path)
-		);
+		const includedPaths = this.getIncludedSongPaths();
 		new SongPickerModal(this.app, includedPaths, this.getBandTag(), true, (file) => {
 			this.enterStageView(file);
 		}).open();
@@ -491,7 +493,7 @@ export class SetListEditView extends BaseSetListView {
 
 	/**
 	 * Best-effort import: each non-blank clipboard line becomes a song row if it matches a
-	 * vault file (see findBestSongMatch), or is appended as a plain text row otherwise — so an
+	 * vault file (see findBestSongMatches), or is appended as a plain text row otherwise — so an
 	 * unmatched line is still visible to fix up by hand rather than silently dropped.
 	 */
 	async pasteSongsFromClipboard(): Promise<void> {
@@ -512,8 +514,9 @@ export class SetListEditView extends BaseSetListView {
 		if (lines.length === 0) return;
 
 		const sourcePath = this.file.path;
-		const newEntries: SetListEntry[] = lines.map((line) => {
-			const match = findBestSongMatch(this.app, line);
+		const matches = findBestSongMatches(this.app, lines);
+		const newEntries: SetListEntry[] = lines.map((line, i) => {
+			const match = matches[i];
 			return match ? this.createSongEntry(match, sourcePath) : { type: "text", line: -1, raw: line };
 		});
 

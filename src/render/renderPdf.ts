@@ -22,12 +22,6 @@ interface PdfJsLib {
 	getDocument(params: { data: ArrayBuffer }): { promise: Promise<PdfJsDocument> };
 }
 
-/** One open PDF per Stage view instance (`component`) at a time — destroyed and replaced on the
- *  next navigation, since nothing else releases a superseded document's worker/decoded resources
- *  otherwise (SetListStageView.render() builds a fresh container and calls renderSong/renderPdf
- *  fire-and-forget on every navigation). */
-const openDocuments = new WeakMap<Component, PdfJsDocument>();
-
 /** pdf.js's SpreadMode.EVEN semantics, reimplemented manually since this renders pages directly
  *  rather than using pdf.js's own PDFViewer widget: pages 1-2, 3-4, 5-6, etc. paired side by side,
  *  no lone first page. Page numbers are 1-based, matching pdf.js's own convention. */
@@ -60,10 +54,39 @@ async function renderPageToCanvas(page: PdfJsPage, scale: number): Promise<HTMLC
 	return canvas;
 }
 
+/** Resolves once `container` has a real layout width, for a leaf that's still 0-width when
+ *  renderPdf runs (e.g. restored mid-layout from a saved workspace, or opened in a background
+ *  tab/split) — rendering spreads against a 0 width would scale every canvas down to nothing,
+ *  with nothing else in Stage view triggering a re-render once the leaf actually lays out. */
+function waitForNonZeroWidth(container: HTMLElement, component: Component): Promise<void> {
+	if (container.clientWidth > 0) return Promise.resolve();
+	return new Promise((resolve) => {
+		const observer = new ResizeObserver(() => {
+			if (container.clientWidth > 0) {
+				observer.disconnect();
+				resolve();
+			}
+		});
+		observer.observe(container);
+		component.register(() => {
+			observer.disconnect();
+			resolve();
+		});
+	});
+}
+
 /** Renders a PDF song's pages directly via Obsidian's own pdf.js (`loadPdfJs()`, a public API —
  *  see CLAUDE.md's PDF-rendering section) as 2-page spreads, bypassing the `![[file.pdf]]`
  *  embed/`MarkdownRenderer.render()` path entirely: no toolbar, zoom, text layer, or annotations,
- *  just the pages themselves, stacked vertically in Stage view's existing scroll flow. */
+ *  just the pages themselves, stacked vertically in Stage view's existing scroll flow.
+ *
+ *  `component` is expected to be a fresh, single-use Component owned by the caller (see
+ *  SetListStageView.render()) that gets unloaded — via SetListStageView swapping in a new one on
+ *  the next navigation, or via the whole Stage view closing — no later than the next song render.
+ *  This function registers its own pdf.js document to be destroyed on that unload, and checks a
+ *  matching `cancelled` flag between every await so a superseded render stops touching the
+ *  document (and stops appending canvases into a container that's no longer current) instead of
+ *  racing the newer one. */
 export async function renderPdf(app: App, component: Component, container: HTMLElement, file: TFile): Promise<void> {
 	let pdfDoc: PdfJsDocument;
 	try {
@@ -76,16 +99,24 @@ export async function renderPdf(app: App, component: Component, container: HTMLE
 		return;
 	}
 
-	openDocuments.get(component)?.destroy();
-	openDocuments.set(component, pdfDoc);
+	let cancelled = false;
+	component.register(() => {
+		cancelled = true;
+		pdfDoc.destroy();
+	});
 
 	// Fit each spread to the visible Stage view viewport's height, not the container's width, so
 	// a full page (or pair) is visible at once without extra scrolling — the point of Stage view.
 	// Falls back to window.innerHeight if the ancestor isn't found (shouldn't happen in practice).
 	const availableHeight = container.closest<HTMLElement>(".set-list-stage-view")?.clientHeight ?? window.innerHeight;
 
+	await waitForNonZeroWidth(container, component);
+	if (cancelled) return;
+
 	for (const spread of buildSpreads(pdfDoc.numPages)) {
 		const pages = await Promise.all(spread.map((n) => pdfDoc.getPage(n)));
+		if (cancelled) return;
+
 		const viewports = pages.map((page) => page.getViewport({ scale: 1 }));
 		const heightScale = availableHeight / Math.max(...viewports.map((v) => v.height));
 		// Capped by width too, so a wide spread (e.g. two portrait pages scaled to fill a short,
@@ -95,7 +126,9 @@ export async function renderPdf(app: App, component: Component, container: HTMLE
 
 		const spreadEl = container.createDiv({ cls: "set-list-pdf-spread" });
 		for (const page of pages) {
-			spreadEl.appendChild(await renderPageToCanvas(page, scale));
+			const canvas = await renderPageToCanvas(page, scale);
+			if (cancelled) return;
+			spreadEl.appendChild(canvas);
 		}
 	}
 }
