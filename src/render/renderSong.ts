@@ -15,7 +15,6 @@ export async function renderSong(
 	}
 
 	if (file.extension === "md") {
-		container.createDiv({ cls: "set-list-song-title", text: file.basename });
 		const target = container.createDiv({ cls: "markdown-rendered" });
 		// A real MarkdownView applies a note's `cssclass(es)` frontmatter to its container
 		// itself; rendering via MarkdownRenderer.render() directly (see CLAUDE.md) bypasses
