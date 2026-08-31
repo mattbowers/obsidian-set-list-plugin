@@ -18,6 +18,7 @@ This structurally avoids the old bug class (never touches the component that cau
 - `npm run build` — type-check (`tsc -noEmit`) then production esbuild bundle
 - `npm run check` — type-check only
 - `npm test` — run the vitest suite (pure-logic tests only; view/rendering/gesture wiring is verified manually in Obsidian, not unit tested)
+- `npm run deploy [-- <vault-path>] [-- --no-build]` — `scripts/deploy.sh`: production-builds, then copies `main.js`/`manifest.json`/`styles.css`/`versions.json` as a **plain file copy** into a vault's `.obsidian/plugins/obsidian-set-list-plugin/` (default: the Live vault at `/Users/matthew/Documents/Vaults/Live`), removing a pre-existing symlink there first. This is the release path for real vaults — distinct from the Testbed symlink+hot-reload dev loop below, which stays a symlink. The Live vault was un-symlinked and switched to this copy on 2026-08-31; its `data.json` (MIDI settings) is now independent of this repo's.
 
 ### Local dev loop
 
