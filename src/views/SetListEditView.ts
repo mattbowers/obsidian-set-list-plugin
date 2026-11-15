@@ -43,7 +43,7 @@ export class SetListEditView extends BaseSetListView {
 	}
 
 	// Pre-select whatever song was last shown in Stage view for this file, so returning here
-	// — however that happens (long-press gesture, the switch-to-edit-view command, or the
+	// — however that happens (Stage view's back-to-list button, the switch-to-edit-view command, or the
 	// pane's back button all end up here via this same onLoadFile hook) — lands on the right
 	// row. Only applies to a fresh selection; an existing one (e.g. the user already clicked
 	// a row) is left alone.
@@ -511,7 +511,7 @@ export class SetListEditView extends BaseSetListView {
 	 * Picks a song that isn't (necessarily) on the set list and jumps straight into Stage view
 	 * showing it — a request or filler song mid-set — without adding it to the set list note.
 	 * `index` still gets set from the current selection (as enterStageView's own default does),
-	 * so once the ad hoc song is swiped away from, Stage view resumes the real set list there.
+	 * so once the ad hoc song is navigated away from, Stage view resumes the real set list there.
 	 */
 	openDirectSongPicker(): void {
 		if (!this.file) return;

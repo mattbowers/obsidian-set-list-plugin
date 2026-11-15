@@ -1,4 +1,4 @@
-import { MarkdownView, normalizePath, Platform, Plugin, TFile } from "obsidian";
+import { MarkdownView, normalizePath, Notice, Platform, Plugin, TFile } from "obsidian";
 import { isSetListFile, SET_LIST_FRONTMATTER_TYPE } from "./setlist/parser";
 import { SetListEditView } from "./views/SetListEditView";
 import { SetListStageView } from "./views/SetListStageView";
@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS: SetListSettings = {
 export default class SetListPlugin extends Plugin {
 	private uninstallSwipeGuard: (() => void) | null = null;
 	// Last song index shown per set-list file in Stage view, kept in sync by SetListStageView's
-	// own render() rather than by any particular way of leaving it (gesture, command palette,
+	// own render() rather than by any particular way of leaving it (nav button, command palette,
 	// pane back button, ...) so SetListEditView can restore the right selection on load
 	// regardless of how the user got back to it.
 	readonly lastStageIndexByFile: Map<string, number> = new Map();
@@ -55,7 +55,18 @@ export default class SetListPlugin extends Plugin {
 		}
 
 		this.registerView(SET_LIST_EDIT_VIEW_TYPE, (leaf) => new SetListEditView(leaf, this));
-		this.registerView(SET_LIST_STAGE_VIEW_TYPE, (leaf) => new SetListStageView(leaf, this));
+		this.registerView(SET_LIST_STAGE_VIEW_TYPE, (leaf) => {
+			// Obsidian swallows a view-constructor error and shows only "Plugin no longer active",
+			// which is undiagnosable on mobile without devtools — surface the real error instead.
+			try {
+				return new SetListStageView(leaf, this);
+			} catch (err) {
+				const detail = err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err);
+				new Notice(`Set List: Stage view failed to open\n${detail.slice(0, 600)}`, 0);
+				console.log("Set List: Stage view constructor failed", err);
+				throw err;
+			}
+		});
 
 		this.addSwitchViewCommand("switch-to-edit-view", "Switch to edit view", SET_LIST_EDIT_VIEW_TYPE);
 		this.addEnterStageViewCommand();
