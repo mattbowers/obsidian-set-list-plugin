@@ -245,6 +245,16 @@
 	cursor: default;
 }
 
+/* chord-sheets-mb's frontmatter-properties pill (shape/placement come from the vault's own
+   chord-sheets snippets) — restyled in Stage view only to match the primary Next nav button,
+   so the two on-screen overlays read as one visual family. */
+.set-list-stage-view .chord-sheet-properties {
+	border: 1px solid color-mix(in srgb, var(--interactive-accent) 50%, transparent);
+	background-color: color-mix(in srgb, var(--background-secondary) 35%, transparent);
+	color: var(--interactive-accent);
+	opacity: 0.6;
+}
+
 /* Custom PDF renderer output (see renderPdf.ts) — deliberately not `.markdown-rendered`, since
    this is hand-built canvas content, not real MarkdownRenderer/theme-styled prose. */
 .set-list-pdf-view {
