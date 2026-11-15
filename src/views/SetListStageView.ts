@@ -2,7 +2,6 @@ import { Component, setIcon, TFile, ViewStateResult } from "obsidian";
 import { BaseSetListView } from "./BaseSetListView";
 import { renderSong } from "../render/renderSong";
 import { findFirstSongIndex, findNextSongIndex, findPrevSongIndex } from "../setlist/navigation";
-import { renderBuildBadge } from "../ui/buildBadge";
 import { SET_LIST_EDIT_VIEW_TYPE, SET_LIST_STAGE_VIEW_TYPE } from "./viewTypes";
 import type { SongEntry } from "../setlist/types";
 
@@ -154,7 +153,6 @@ export class SetListStageView extends BaseSetListView {
 		// a real link/checkbox in it. Only vertical scrolling passes through (CSS touch-action).
 		stageContent.createDiv({ cls: "set-list-tap-shield" });
 
-		renderBuildBadge(stageContent, this.plugin);
 
 		// Bottom-right: the corner least likely to sit over the start of a line of lyrics/chords.
 		const nav = root.createDiv({ cls: "set-list-stage-nav" });

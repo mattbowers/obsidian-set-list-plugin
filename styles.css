@@ -245,12 +245,6 @@
 	cursor: default;
 }
 
-/* The nav cluster owns the bottom-right corner here; keep the build badge clear of it. */
-.set-list-stage-view .set-list-build-badge {
-	right: auto;
-	left: var(--size-4-2);
-}
-
 /* Custom PDF renderer output (see renderPdf.ts) — deliberately not `.markdown-rendered`, since
    this is hand-built canvas content, not real MarkdownRenderer/theme-styled prose. */
 .set-list-pdf-view {

@@ -24,7 +24,7 @@ This structurally avoids the old bug class (never touches the component that cau
 
 Symlink this repo into a test vault's plugin folder, e.g. `<vault>/.obsidian/plugins/obsidian-set-list-plugin`, and install the community `hot-reload` plugin in that vault — it picks up a fresh `main.js` after each build automatically. Sample song/set-list files for manual testing live outside this repo at `/Users/matthew/Documents/Vaults/Testbed`; the plugin also renders through the vault's separately-installed `chord-sheets-mb` plugin for some songs, which this plugin has no code dependency on but which its Stage/Edit views' DOM structure (`.markdown-reading-view` / `.markdown-preview-view` / `.markdown-rendered`) must stay compatible with for correct visual rendering.
 
-Each build bakes a `__BUILD_TIME__` timestamp (via esbuild `define`) into the bundle; both views render a small "vX.Y.Z · built HH:MM:SS" badge (`src/ui/buildBadge.ts`) so you can visually confirm a rebuild reached a device (useful on mobile/tablet, where devtools aren't handy).
+Each build bakes a `__BUILD_TIME__` timestamp (via esbuild `define`) into the bundle; Edit view renders a small "vX.Y.Z · built HH:MM:SS" badge (not Stage view, to keep the performance screen clean) (`src/ui/buildBadge.ts`) so you can visually confirm a rebuild reached a device (useful on mobile/tablet, where devtools aren't handy).
 
 ## Architecture
 
