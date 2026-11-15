@@ -187,7 +187,11 @@
 	gap: var(--set-list-nav-gap);
 }
 
-.set-list-stage-view .set-list-stage-nav-button {
+/* The extra .set-list-stage-nav in the selector is load-bearing: Obsidian's own
+   `.is-tablet button:not(.clickable-icon)` (specificity 0,2,1) adds 20px side padding to
+   every button on tablet, which beat a two-class selector here and squeezed the icons down to
+   ~9px inside the small buttons. */
+.set-list-stage-view .set-list-stage-nav .set-list-stage-nav-button {
 	width: var(--set-list-nav-small);
 	height: var(--set-list-nav-small);
 	padding: 0;
@@ -198,15 +202,29 @@
 	border: 1px solid color-mix(in srgb, var(--text-muted) 40%, transparent);
 	background-color: color-mix(in srgb, var(--background-secondary) 35%, transparent);
 	box-shadow: none;
-	color: var(--text-muted);
+	color: var(--text-normal);
 	opacity: 0.6;
 	cursor: pointer;
 	-webkit-tap-highlight-color: transparent;
+	/* A held press must not turn into a scroll/pan (which would pointercancel it), a text
+	   selection, or the iOS long-press callout. */
+	touch-action: none;
+	user-select: none;
+	-webkit-user-select: none;
+	-webkit-touch-callout: none;
 }
 
-.set-list-stage-view .set-list-stage-nav-button svg {
-	width: 50%;
-	height: 50%;
+/* Fixed px rather than % of the button, so the icon size doesn't depend on whatever padding
+   Obsidian/the theme applies to buttons. */
+.set-list-stage-view .set-list-stage-nav .set-list-stage-nav-button svg {
+	width: 18px;
+	height: 18px;
+	stroke-width: 2.5px;
+}
+
+.set-list-stage-view .set-list-stage-nav .set-list-stage-nav-button.is-primary svg {
+	width: 40px;
+	height: 40px;
 }
 
 /* As tall as the two small buttons stacked, so the cluster reads as one block. */

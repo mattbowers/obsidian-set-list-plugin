@@ -177,9 +177,33 @@ export class SetListStageView extends BaseSetListView {
 	): HTMLButtonElement {
 		const button = parent.createEl("button", { cls: "set-list-stage-nav-button", attr: { "aria-label": label } });
 		setIcon(button, icon);
+
+		// Fires on release, however long the press was held: a plain "click" never arrives after
+		// a long press on touch (the OS treats it as a context-menu gesture and cancels the click),
+		// and a held press mid-performance must still count. Pointer capture keeps the release
+		// targeted at this button even if the finger drifts off it while held.
+		let activePointerId: number | null = null;
+		this.registerDomEvent(button, "pointerdown", (evt) => {
+			if (button.disabled || evt.button !== 0) return;
+			activePointerId = evt.pointerId;
+			button.setPointerCapture(evt.pointerId);
+			evt.preventDefault();
+		});
+		this.registerDomEvent(button, "pointerup", (evt) => {
+			if (evt.pointerId !== activePointerId) return;
+			activePointerId = null;
+			evt.preventDefault();
+			if (!button.disabled) onClick();
+		});
+		this.registerDomEvent(button, "pointercancel", () => {
+			activePointerId = null;
+		});
+		this.registerDomEvent(button, "contextmenu", (evt) => evt.preventDefault());
+		// Keyboard activation (Enter/Space) only — pointer presses are handled above, and their
+		// own trailing click event (detail > 0) must not fire the action a second time.
 		this.registerDomEvent(button, "click", (evt) => {
 			evt.preventDefault();
-			onClick();
+			if (evt.detail === 0) onClick();
 		});
 		return button;
 	}
