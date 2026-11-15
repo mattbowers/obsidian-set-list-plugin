@@ -246,6 +246,11 @@ export class SetListEditView extends BaseSetListView {
 			titleGroup.createSpan({ cls: "set-list-row-metadata", text: metadataLine });
 		}
 
+		// Right-aligned in its own column so scanning down the list shows at a glance which songs
+		// are missing a patch. Always rendered (empty when absent) so every row keeps the same layout.
+		const patch = entry.file ? this.getSongPatch(entry.file) : null;
+		row.createSpan({ cls: "set-list-row-patch", text: patch ?? "" });
+
 		row.addEventListener("click", () => {
 			this.selectedIndex = index;
 			this.render();
@@ -428,6 +433,19 @@ export class SetListEditView extends BaseSetListView {
 		].filter((value): value is string => value !== null);
 
 		return parts.length > 0 ? parts.join(" · ") : null;
+	}
+
+	/** The song file's own `patch` frontmatter (keyboard patch for the song); a list value is
+	 *  joined with ", ". */
+	private getSongPatch(file: TFile): string | null {
+		const value: unknown = this.app.metadataCache.getFileCache(file)?.frontmatter?.patch;
+		if (Array.isArray(value)) {
+			const parts = value
+				.map((item) => this.stringifyMetadataValue(item))
+				.filter((item): item is string => item !== null);
+			return parts.length > 0 ? parts.join(", ") : null;
+		}
+		return this.stringifyMetadataValue(value);
 	}
 
 	private formatTempo(value: unknown): string | null {

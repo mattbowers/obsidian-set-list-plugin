@@ -111,6 +111,18 @@
 	color: var(--text-faint);
 }
 
+.set-list-row-patch {
+	flex-shrink: 0;
+	margin-left: auto;
+	text-align: right;
+	font-weight: var(--font-normal);
+	font-variant-numeric: tabular-nums;
+	/* Same size/colour/weight as .set-list-row-metadata (the artist/key/tempo line). */
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	white-space: nowrap;
+}
+
 .set-list-row-song.set-list-row-dragging {
 	opacity: 0.5;
 	transition: none;
